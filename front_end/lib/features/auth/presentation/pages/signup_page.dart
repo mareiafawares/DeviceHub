@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:front_end/core/service_locator.dart';
+import 'package:front_end/features/auth/presentation/cubit/auth_state.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:front_end/features/auth/presentation/cubit/auth_cubit.dart';
@@ -57,7 +58,7 @@ class _SignupPageState extends State<SignupPage> {
               if (selectedRole == 'seller') {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const SellerHome()),
+                  MaterialPageRoute(builder: (context) => const SellerHomePage(userId: 1, username: '',)),
                   (route) => false, 
                 );
               } else {

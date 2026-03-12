@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:front_end/features/auth/presentation/cubit/auth_state.dart';
 import 'package:front_end/features/auth/presentation/pages/admin_home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:front_end/core/service_locator.dart';
@@ -54,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
     else if (role == "seller") {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const SellerHome()),
+        MaterialPageRoute(builder: (context) => const SellerHomePage(userId: 1, username: '',)),
       );
     } 
     

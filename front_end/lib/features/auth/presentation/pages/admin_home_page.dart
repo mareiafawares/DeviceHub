@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import 'admin_users_page.dart'; // تأكدي أن هذا الملف موجود في نفس المجلد
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:front_end/features/auth/presentation/pages/login_page.dart';
+import '../cubit/auth_cubit.dart';
+import '../cubit/auth_state.dart';
+import 'admin_users_page.dart';
+import 'admin_shop_requests_page.dart'; // تأكدي من وجود هذا الملف
 
 class AdminHomePage extends StatelessWidget {
   const AdminHomePage({super.key});
@@ -7,141 +12,187 @@ class AdminHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
-      appBar: AppBar(
-        title: const Text(
-          'Admin Dashboard',
-          style: TextStyle(
-            color: Colors.white, 
-            fontWeight: FontWeight.bold, 
-            letterSpacing: 1.2
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFF1A237E),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white),
-            onPressed: () {
-             
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Upper Header Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(25.0),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1A237E),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
+      backgroundColor: const Color(0xFFF4F7FE),
+      // BlocListener لمراقبة أي أخطاء عامة تظهر في لوحة التحكم
+      body: BlocListener<AuthCubit, AuthState>(
+        listener: (context, state) {
+          if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+            );
+          }
+        },
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 180.0,
+              floating: false,
+              pinned: true,
+              elevation: 0,
+              backgroundColor: const Color(0xFF1A237E),
+              flexibleSpace: FlexibleSpaceBar(
+                centerTitle: true,
+                title: const Text(
+                  'Admin Console',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "Welcome back,",
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    "Maria Fawares",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
+                background: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Management Console",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2C3E50),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Control Grid
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 18,
-                    mainAxisSpacing: 18,
+                  child: Stack(
                     children: [
-                      
-                      _adminItem(
-                        context,
-                        Icons.group_rounded,
-                        "Users",
-                        "Manage Accounts",
-                        Colors.indigo,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const AdminUsersPage(),
+                      Positioned(
+                        top: 60,
+                        left: 25,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              "Welcome back,",
+                              style: TextStyle(color: Colors.white70, fontSize: 14),
                             ),
-                          );
-                        },
-                      ),
-
-                      // 2. Sellers Card
-                      _adminItem(
-                        context,
-                        Icons.storefront_rounded,
-                        "Sellers",
-                        "Store Requests",
-                        Colors.teal,
-                        () {
-                          print("Sellers Management Tapped");
-                        },
-                      ),
-
-                      // 3. Devices Card
-                      _adminItem(
-                        context,
-                        Icons.devices_other_rounded,
-                        "Devices",
-                        "All Inventory",
-                        Colors.orange.shade800,
-                        () {
-                          print("Devices Management Tapped");
-                        },
-                      ),
-
-                      // 4. Reports Card
-                      _adminItem(
-                        context,
-                        Icons.analytics_outlined,
-                        "Reports",
-                        "Sales & Data",
-                        Colors.purple.shade700,
-                        () {
-                          print("Reports Tapped");
-                        },
+                            SizedBox(height: 5),
+                            Text(
+                              "Maria Fawares",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ],
+                ),
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: IconButton(
+                    icon: const Icon(Icons.power_settings_new_rounded,
+                        color: Colors.white, size: 28),
+                    onPressed: () {
+                      // تسجيل الخروج والعودة لصفحة اللوجن
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LoginPage()),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "System Management",
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2D3436),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 15,
+                      mainAxisSpacing: 15,
+                      childAspectRatio: 0.95,
+                      children: [
+                        // 1. Users Management
+                        _buildModernItem(
+                          context,
+                          Icons.people_alt_rounded,
+                          "Users",
+                          "Manage Accounts",
+                          const Color(0xFF6C5CE7),
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const AdminUsersPage()),
+                          ),
+                        ),
+                        
+                        // 2. Sellers & Shop Requests (الربط الجديد هنا)
+                        _buildModernItem(
+                          context,
+                          Icons.store_mall_directory_rounded,
+                          "Sellers",
+                          "Shop Requests",
+                          const Color(0xFF00B894),
+                          () {
+                            // جلب الطلبات من السيرفر أولاً
+                            context.read<AuthCubit>().fetchPendingShops();
+                            // الانتقال لصفحة عرض الطلبات
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const AdminShopRequestsPage()),
+                            );
+                          },
+                        ),
+
+                        // 3. Products
+                        _buildModernItem(
+                          context,
+                          Icons.inventory_2_rounded,
+                          "Products",
+                          "Item Catalog",
+                          const Color(0xFFE17055),
+                          () => print("Products Management"),
+                        ),
+
+                        // 4. Orders
+                        _buildModernItem(
+                          context,
+                          Icons.local_shipping_rounded,
+                          "Orders",
+                          "Track Shipments",
+                          const Color(0xFF0984E3),
+                          () => print("Orders Management"),
+                        ),
+
+                        // 5. Complaints
+                        _buildModernItem(
+                          context,
+                          Icons.report_problem_rounded,
+                          "Complaints",
+                          "User Issues",
+                          const Color(0xFFD63031),
+                          () => print("Complaints Management"),
+                        ),
+
+                        // 6. Statistics
+                        _buildModernItem(
+                          context,
+                          Icons.analytics_rounded,
+                          "Statistics",
+                          "System Growth",
+                          const Color(0xFF636E72),
+                          () => print("Stats Tapped"),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+                  ],
+                ),
               ),
             ),
           ],
@@ -150,8 +201,7 @@ class AdminHomePage extends StatelessWidget {
     );
   }
 
-  
-  Widget _adminItem(
+  Widget _buildModernItem(
     BuildContext context,
     IconData icon,
     String title,
@@ -159,36 +209,48 @@ class AdminHomePage extends StatelessWidget {
     Color color,
     VoidCallback onTap,
   ) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            )
+              color: color.withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 45, color: color),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 30, color: color),
+            ),
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2D3436),
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
