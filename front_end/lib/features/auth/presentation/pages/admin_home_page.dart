@@ -4,7 +4,7 @@ import 'package:front_end/features/auth/presentation/pages/login_page.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import 'admin_users_page.dart';
-import 'admin_shop_requests_page.dart'; // تأكدي من وجود هذا الملف
+import 'admin_shop_requests_page.dart';
 
 class AdminHomePage extends StatelessWidget {
   const AdminHomePage({super.key});
@@ -13,7 +13,6 @@ class AdminHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FE),
-      // BlocListener لمراقبة أي أخطاء عامة تظهر في لوحة التحكم
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
@@ -83,7 +82,6 @@ class AdminHomePage extends StatelessWidget {
                     icon: const Icon(Icons.power_settings_new_rounded,
                         color: Colors.white, size: 28),
                     onPressed: () {
-                      // تسجيل الخروج والعودة لصفحة اللوجن
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -116,7 +114,6 @@ class AdminHomePage extends StatelessWidget {
                       mainAxisSpacing: 15,
                       childAspectRatio: 0.95,
                       children: [
-                        // 1. Users Management
                         _buildModernItem(
                           context,
                           Icons.people_alt_rounded,
@@ -129,8 +126,6 @@ class AdminHomePage extends StatelessWidget {
                                 builder: (context) => const AdminUsersPage()),
                           ),
                         ),
-                        
-                        // 2. Sellers & Shop Requests (الربط الجديد هنا)
                         _buildModernItem(
                           context,
                           Icons.store_mall_directory_rounded,
@@ -138,9 +133,7 @@ class AdminHomePage extends StatelessWidget {
                           "Shop Requests",
                           const Color(0xFF00B894),
                           () {
-                            // جلب الطلبات من السيرفر أولاً
                             context.read<AuthCubit>().fetchPendingShops();
-                            // الانتقال لصفحة عرض الطلبات
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -148,8 +141,6 @@ class AdminHomePage extends StatelessWidget {
                             );
                           },
                         ),
-
-                        // 3. Products
                         _buildModernItem(
                           context,
                           Icons.inventory_2_rounded,
@@ -158,8 +149,6 @@ class AdminHomePage extends StatelessWidget {
                           const Color(0xFFE17055),
                           () => print("Products Management"),
                         ),
-
-                        // 4. Orders
                         _buildModernItem(
                           context,
                           Icons.local_shipping_rounded,
@@ -168,8 +157,6 @@ class AdminHomePage extends StatelessWidget {
                           const Color(0xFF0984E3),
                           () => print("Orders Management"),
                         ),
-
-                        // 5. Complaints
                         _buildModernItem(
                           context,
                           Icons.report_problem_rounded,
@@ -178,8 +165,6 @@ class AdminHomePage extends StatelessWidget {
                           const Color(0xFFD63031),
                           () => print("Complaints Management"),
                         ),
-
-                        // 6. Statistics
                         _buildModernItem(
                           context,
                           Icons.analytics_rounded,

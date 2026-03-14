@@ -1,6 +1,6 @@
 abstract class AuthRepository {
   Future<Map<String, dynamic>> login(String email, String password);
-  
+
   Future<void> signUp({
     required String username,
     required String email,
@@ -8,7 +8,6 @@ abstract class AuthRepository {
     required String role,
   });
 
-  // التأكد من أن الإرسال صار POST ليتوافق مع السيرفر الجديد
   Future<Map<String, dynamic>> createShopRequest({
     required int userId,
     required String shopName,
@@ -25,4 +24,12 @@ abstract class AuthRepository {
   Future<List<Map<String, dynamic>>> getAllUsers();
 
   Future<void> deleteUser(int userId);
+
+  Future<List<Map<String, dynamic>>> getShopProducts(int shopId);
+
+  Future<void> addProduct(int shopId, Map<String, dynamic> productData);
+
+  Future<void> updateProduct(int productId, Map<String, dynamic> productData);
+
+  Future<void> deleteProduct(int productId);
 }

@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:front_end/features/auth/presentation/cubit/product_cubit.dart';
 import 'package:front_end/features/auth/presentation/pages/login_page.dart';
+import 'package:front_end/features/auth/presentation/pages/products_page.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../widgets/create_shop_dialog.dart';
 import '../../data/models/user_model.dart';
 
 class SellerHomePage extends StatefulWidget {
+  final int shopId;
   final int userId;
   final String username;
 
-  const SellerHomePage({super.key, required this.userId, required this.username});
+  const SellerHomePage({super.key, required this.userId, required this.username,required this.shopId});
 
   @override
   State<SellerHomePage> createState() => _SellerHomePageState();
@@ -141,8 +144,18 @@ class _SellerHomePageState extends State<SellerHomePage> {
                 foregroundColor: Theme.of(context).primaryColor,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: () {}, // التنقل لإدارة منتجات هذا المتجر تحديداً
-              child: const Text("Manage Products"),
+           onPressed: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => BlocProvider.value(
+        value: context.read<ProductCubit>(), // تمرير الـ Cubit الموجود حالياً للصفحة الجديدة
+        child: ProductsPage(shopId: widget.shopId),
+      ),
+    ),
+  );
+},
+child: const Text("Manage Products"),
             ),
           ],
         ),

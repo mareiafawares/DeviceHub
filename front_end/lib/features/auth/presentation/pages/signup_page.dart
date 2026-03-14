@@ -58,7 +58,7 @@ class _SignupPageState extends State<SignupPage> {
               if (selectedRole == 'seller') {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const SellerHomePage(userId: 1, username: '',)),
+                  MaterialPageRoute(builder: (context) => const SellerHomePage(userId: 1, username: '', shopId: 1,)),
                   (route) => false, 
                 );
               } else {

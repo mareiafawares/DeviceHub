@@ -55,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
     else if (role == "seller") {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const SellerHomePage(userId: 1, username: '',)),
+        MaterialPageRoute(builder: (context) => const SellerHomePage(userId: 1, username: '', shopId: 1,)),
       );
     } 
     

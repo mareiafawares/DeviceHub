@@ -14,7 +14,6 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    // معالجة قائمة المتاجر بشكل آمن تماماً
     var shopsFromJson = json['shops'];
     List<ShopModel> shopList = [];
 
@@ -29,7 +28,7 @@ class UserModel {
       username: json['username'] ?? '',
       email: json['email'] ?? '',
       role: json['role'] ?? '',
-      shops: shopList, // ستكون قائمة فارغة [] في حال كان السيرفر أرسل null
+      shops: shopList,
     );
   }
 }

@@ -11,11 +11,9 @@ class AdminShopRequestsPage extends StatefulWidget {
 }
 
 class _AdminShopRequestsPageState extends State<AdminShopRequestsPage> {
-  
   @override
   void initState() {
     super.initState();
-    // طلب البيانات من السيرفر فور تشغيل الصفحة لكي لا تظل عالقة
     context.read<AuthCubit>().fetchPendingShops();
   }
 
@@ -48,12 +46,10 @@ class _AdminShopRequestsPageState extends State<AdminShopRequestsPage> {
           }
         },
         builder: (context, state) {
-          // حالة التحميل
           if (state is AuthLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // حالة نجاح التحميل وعرض القائمة
           if (state is PendingShopsLoaded) {
             if (state.shops.isEmpty) {
               return Center(
@@ -78,11 +74,9 @@ class _AdminShopRequestsPageState extends State<AdminShopRequestsPage> {
 
             return RefreshIndicator(
               onRefresh: () async {
-                // تنفيذ عملية التحديث عند سحب الشاشة للأسفل
                 await context.read<AuthCubit>().fetchPendingShops();
               },
               child: ListView.builder(
-                // physics تضمن أن السحب للأسفل يعمل حتى لو كانت الشاشة فارغة أو العناصر قليلة
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(15),
                 itemCount: state.shops.length,
@@ -115,12 +109,10 @@ class _AdminShopRequestsPageState extends State<AdminShopRequestsPage> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // زر الرفض
                           IconButton(
                             icon: const Icon(Icons.cancel, color: Colors.red),
                             onPressed: () => _confirmAction(context, shop['id'], false),
                           ),
-                          // زر القبول
                           IconButton(
                             icon: const Icon(Icons.check_circle, color: Colors.green),
                             onPressed: () => _confirmAction(context, shop['id'], true),
@@ -134,7 +126,6 @@ class _AdminShopRequestsPageState extends State<AdminShopRequestsPage> {
             );
           }
 
-          // في حالة البداية أو حدوث شيء غير متوقع
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -153,7 +144,6 @@ class _AdminShopRequestsPageState extends State<AdminShopRequestsPage> {
     );
   }
 
-  // دالة لإظهار تأكيد قبل القبول أو الرفض
   void _confirmAction(BuildContext context, int userId, bool approve) {
     showDialog(
       context: context,
@@ -167,7 +157,6 @@ class _AdminShopRequestsPageState extends State<AdminShopRequestsPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              // تنفيذ العملية من خلال الـ Cubit
               context.read<AuthCubit>().approveOrRejectShop(userId: userId, approve: approve);
               Navigator.pop(dialogContext);
             },

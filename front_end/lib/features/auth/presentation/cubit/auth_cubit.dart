@@ -8,21 +8,18 @@ class AuthCubit extends Cubit<AuthState> {
 
   AuthCubit(this.authRepository) : super(AuthInitial());
 
-  // ==================== 1. نظام تسجيل الدخول ====================
   Future<void> login(String email, String password) async {
     if (email.isEmpty || password.isEmpty) {
       emit(AuthError("Please enter all required fields"));
       return;
     }
-
     emit(AuthLoading());
     try {
       final Map<String, dynamic> result = await authRepository.login(email, password);
       final user = UserModel.fromJson(result);
-
       emit(AuthSuccess(
         result['access_token'] ?? '',
-        user: user, 
+        user: user,
         userRole: user.role.toLowerCase(),
         userId: user.id,
       ));
@@ -31,7 +28,6 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  // ==================== 2. دالة تحديث بيانات المستخدم ====================
   Future<void> refreshUserData(int userId) async {
     try {
       final users = await authRepository.getAllUsers();
@@ -39,20 +35,16 @@ class AuthCubit extends Cubit<AuthState> {
       final updatedUser = UserModel.fromJson(currentUserData);
 
       emit(AuthSuccess(
-        "session_token", 
+        "session_token",
         user: updatedUser,
         userRole: updatedUser.role.toLowerCase(),
         userId: updatedUser.id,
       ));
-      
-      // طباعة عدد المتاجر للتأكد من التحديث
-      print("DEBUG: User status refreshed: Total Shops = ${updatedUser.shops.length}");
     } catch (e) {
       print("Error refreshing data: $e");
     }
   }
 
-  // ==================== 3. نظام التسجيل (Sign Up) ====================
   Future<void> signUp({
     required String username,
     required String email,
@@ -67,15 +59,12 @@ class AuthCubit extends Cubit<AuthState> {
         password: password,
         role: role,
       );
-      emit(AuthRegistrationSuccess()); 
+      emit(AuthRegistrationSuccess());
     } catch (e) {
       emit(AuthError("Registration failed: ${e.toString()}"));
     }
   }
 
-  // ==================== 4. وظائف البائع (Seller) & إدارة المتاجر ====================
-
-  // إرسال طلب إنشاء متجر جديد
   Future<void> submitShopRequest({
     required int userId,
     required String shopName,
@@ -83,51 +72,30 @@ class AuthCubit extends Cubit<AuthState> {
   }) async {
     emit(AuthLoading());
     try {
-      final result = await authRepository.createShopRequest(
+      await authRepository.createShopRequest(
         userId: userId,
         shopName: shopName,
         shopDescription: shopDescription,
       );
-      
-      final updatedUser = UserModel.fromJson(result);
-
-      // نرسل حالة نجاح الطلب أولاً
       emit(ShopRequestSuccess());
-
-      // ثم نحدث حالة الـ AuthSuccess باليوزر الجديد اللي صار عنده متجر زيادة في القائمة
-      emit(AuthSuccess(
-        "session_token", 
-        user: updatedUser,
-        userRole: updatedUser.role.toLowerCase(),
-        userId: updatedUser.id,
-      ));
+      await refreshUserData(userId);
     } catch (e) {
-      emit(AuthError("Failed to submit shop request: ${e.toString()}"));
+      emit(AuthError("Failed to submit: ${e.toString()}"));
     }
   }
 
-  // دالة حذف المتجر (نستخدم الـ shopId الآن وليس userId)
   Future<void> deleteShop(int shopId) async {
     emit(AuthLoading());
     try {
-      // هنا بننادي دالة الحذف من السيرفر باستخدام الـ ID الخاص بالمحل
-      await authRepository.deleteUser(shopId); // تأكدي من اسم الدالة بالسيرفر لحذف المتجر
-      
-      // بعد الحذف، نحتاج لعمل Refresh لبيانات اليوزر عشان تختفي من القائمة بالفلتر
-      // ملاحظة: نحتاج الـ userId الحالي لعمل refresh
-      // إذا الـ state هي AuthSuccess نقدر نطول الـ userId
+      await authRepository.deleteUser(shopId);
       if (state is AuthSuccess) {
         final currentUserId = (state as AuthSuccess).userId;
         await refreshUserData(currentUserId!);
       }
-      
-      print("DEBUG: Shop $shopId deleted");
     } catch (e) {
       emit(AuthError("Failed to delete shop: ${e.toString()}"));
     }
   }
-
-  // ==================== 5. وظائف الأدمن (Admin) ====================
 
   Future<void> fetchPendingShops() async {
     emit(AuthLoading());
@@ -135,7 +103,7 @@ class AuthCubit extends Cubit<AuthState> {
       final shops = await authRepository.getPendingShopRequests();
       emit(PendingShopsLoaded(shops));
     } catch (e) {
-      emit(AuthError("Failed to load shop requests"));
+      emit(AuthError("Failed to load requests"));
     }
   }
 
@@ -143,8 +111,7 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
     try {
       await authRepository.updateShopStatus(userId: userId, approve: approve);
-      final updatedShops = await authRepository.getPendingShopRequests();
-      emit(PendingShopsLoaded(updatedShops));
+      await fetchPendingShops();
       emit(ShopApprovalSuccess(approve ? "Shop approved!" : "Shop rejected."));
     } catch (e) {
       emit(AuthError("Action failed: ${e.toString()}"));
@@ -164,7 +131,7 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> deleteUser(int userId) async {
     try {
       await authRepository.deleteUser(userId);
-      fetchAllUsers(); 
+      await fetchAllUsers();
     } catch (e) {
       emit(AuthError("Failed to delete user"));
     }

@@ -7,25 +7,22 @@ class AuthRepositoryImpl implements AuthRepository {
 
   AuthRepositoryImpl(this.apiService);
 
-  // 1. تسجيل الدخول - استلام كامل البيانات
   @override
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await apiService.login(email, password);
-      // نعيد الخريطة (Map) كاملة لكي يقرأ الـ UserModel حقول الحالة
-      return response.data; 
+      return response.data;
     } on DioException catch (e) {
       throw Exception(e.response?.data['detail'] ?? "Login failed");
     }
   }
 
-  // 2. إنشاء حساب جديد
   @override
   Future<void> signUp({
-    required String username, 
-    required String email, 
-    required String password, 
-    required String role
+    required String username,
+    required String email,
+    required String password,
+    required String role,
   }) async {
     try {
       await apiService.post('users/', data: {
@@ -39,7 +36,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  // 3. طلب إنشاء متجر (تم التعديل ليرجع Map بدلاً من void)
   @override
   Future<Map<String, dynamic>> createShopRequest({
     required int userId,
@@ -47,21 +43,56 @@ class AuthRepositoryImpl implements AuthRepository {
     required String shopDescription,
   }) async {
     try {
-      final response = await apiService.put(
-        'users/create-shop/$userId', 
+      final response = await apiService.post(
+        'users/create-shop/$userId',
         data: {
           'shop_name': shopName,
           'shop_description': shopDescription,
         },
       );
-      // إرجاع البيانات الجديدة (المستخدم مع المتجر الجديد) لكي يقرأها الـ Cubit
       return response.data;
     } on DioException catch (e) {
       throw Exception(e.response?.data['detail'] ?? "Failed to submit shop request");
     }
   }
 
-  // 4. جلب طلبات المتاجر المعلقة (للأدمن)
+  @override
+  Future<List<Map<String, dynamic>>> getShopProducts(int shopId) async {
+    try {
+      final response = await apiService.get('products/shop/$shopId');
+      return List<Map<String, dynamic>>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['detail'] ?? "Failed to fetch products");
+    }
+  }
+
+  @override
+  Future<void> addProduct(int shopId, Map<String, dynamic> productData) async {
+    try {
+      await apiService.post('products/add/$shopId', data: productData);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['detail'] ?? "Failed to add product");
+    }
+  }
+
+  @override
+  Future<void> updateProduct(int productId, Map<String, dynamic> productData) async {
+    try {
+      await apiService.put('products/update/$productId', data: productData);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['detail'] ?? "Failed to update product");
+    }
+  }
+
+  @override
+  Future<void> deleteProduct(int productId) async {
+    try {
+      await apiService.delete('products/delete/$productId');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['detail'] ?? "Failed to delete product");
+    }
+  }
+
   @override
   Future<List<Map<String, dynamic>>> getPendingShopRequests() async {
     try {
@@ -72,12 +103,8 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  // 5. قبول أو رفض طلب المتجر
   @override
-  Future<void> updateShopStatus({
-    required int userId,
-    required bool approve,
-  }) async {
+  Future<void> updateShopStatus({required int userId, required bool approve}) async {
     try {
       await apiService.put(
         'admin/approve-shop/$userId',
@@ -88,18 +115,16 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  // 6. جلب كل المستخدمين
   @override
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
-      final response = await apiService.get('admin/users'); 
+      final response = await apiService.get('admin/users');
       return List<Map<String, dynamic>>.from(response.data);
     } on DioException catch (e) {
       throw Exception(e.response?.data['detail'] ?? "Failed to load users");
     }
   }
 
-  // 7. حذف المستخدم
   @override
   Future<void> deleteUser(int userId) async {
     try {

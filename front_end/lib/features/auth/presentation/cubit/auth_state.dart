@@ -20,7 +20,7 @@ class AuthSuccess extends AuthState {
 }
 
 class AuthRegistrationSuccess extends AuthState {}
-class ShopRequestSuccess extends AuthState {} // حالة لنجاح الإرسال فقط
+class ShopRequestSuccess extends AuthState {} 
 
 class PendingShopsLoaded extends AuthState {
   final List<Map<String, dynamic>> shops;

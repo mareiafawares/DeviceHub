@@ -17,7 +17,6 @@ class _AdminUsersPageState extends State<AdminUsersPage> with SingleTickerProvid
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // طلب البيانات عند فتح الصفحة عبر الـ Cubit
     context.read<AuthCubit>().fetchAllUsers();
   }
 
@@ -47,6 +46,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> with SingleTickerProvid
           controller: _tabController,
           indicatorColor: Colors.orangeAccent,
           indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: const [
             Tab(text: "Buyers", icon: Icon(Icons.shopping_bag)),
@@ -102,7 +103,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> with SingleTickerProvid
 
   Widget _buildUserList(List<dynamic> filteredUsers, String emptyMessage) {
     if (filteredUsers.isEmpty) {
-      return Center(child: Text(emptyMessage, style: const TextStyle(color: Colors.grey)));
+      return Center(child: Text(emptyMessage, style: const TextStyle(color: Colors.grey, fontSize: 16)));
     }
     return ListView.builder(
       padding: const EdgeInsets.all(15),
@@ -130,16 +131,40 @@ class _AdminUsersPageState extends State<AdminUsersPage> with SingleTickerProvid
         subtitle: Text(user['email'] ?? 'No Email'),
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-          onPressed: () {
-            // ملاحظة: دالة الحذف يجب إضافتها في الـ Cubit أيضاً إذا أردتِ تفعيلها
-            _showSnackBar("Delete functionality is currently disabled");
-          },
+          onPressed: () => _confirmDelete(user['id'], user['username']),
         ),
       ),
     );
   }
 
+  void _confirmDelete(int userId, String? username) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Delete"),
+        content: Text("Are you sure you want to delete user '$username'? This action cannot be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              context.read<AuthCubit>().deleteUser(userId);
+              Navigator.pop(context);
+              _showSnackBar("User deleted successfully");
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 }
