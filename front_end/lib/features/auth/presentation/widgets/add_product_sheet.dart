@@ -23,22 +23,35 @@ class _AddProductSheetState extends State<AddProductSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
       padding: EdgeInsets.only(
-        left: 24, right: 24, top: 12,
+        left: 24,
+        right: 24,
+        top: 12,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle Bar
-            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)))),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
-            
-            const Text("Product Details", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A))),
-            const Text("Fill in the information to list your item", style: TextStyle(color: Colors.grey, fontSize: 14)),
+            const Text(
+              "Product Details",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+            ),
+            const Text(
+              "Fill in the information to list your item",
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
             const SizedBox(height: 25),
-
-            // --- Real Image Uploader (Circular/Rounded) ---
             Center(
               child: GestureDetector(
                 onTap: () async {
@@ -46,30 +59,34 @@ class _AddProductSheetState extends State<AddProductSheet> {
                   if (picked != null) setState(() => _imageFile = File(picked.path));
                 },
                 child: Container(
-                  height: 120, width: 120,
+                  height: 120,
+                  width: 120,
                   decoration: BoxDecoration(
                     color: const Color(0xFFF3F6FF),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: const Color(0xFF2D43A6).withOpacity(0.3), width: 2),
                   ),
                   child: _imageFile != null
-                      ? ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.file(_imageFile!, fit: BoxFit.cover))
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: Image.file(_imageFile!, fit: BoxFit.cover),
+                        )
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
                             Icon(Icons.camera_enhance_rounded, color: Color(0xFF2D43A6), size: 35),
                             SizedBox(height: 8),
-                            Text("Add Photo", style: TextStyle(color: Color(0xFF2D43A6), fontWeight: FontWeight.w600, fontSize: 12)),
+                            Text(
+                              "Add Photo",
+                              style: TextStyle(color: Color(0xFF2D43A6), fontWeight: FontWeight.w600, fontSize: 12),
+                            ),
                           ],
                         ),
                 ),
               ),
             ),
             const SizedBox(height: 30),
-
-            // --- Input Fields with Real Styling ---
             _buildModernField(label: "Product Name", hint: "e.g. iPhone 15 Pro", icon: Icons.shopping_bag_outlined),
-            
             Row(
               children: [
                 Expanded(child: _buildModernField(label: "Price", hint: "0.00", icon: Icons.sell_outlined, isNumber: true)),
@@ -77,8 +94,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                 Expanded(child: _buildModernField(label: "Stock", hint: "Qty", icon: Icons.inventory_2_outlined, isNumber: true)),
               ],
             ),
-
-            // --- Category Selector (Chips Style) ---
             const Text("Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 12),
             SizedBox(
@@ -97,16 +112,19 @@ class _AddProductSheetState extends State<AddProductSheet> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
-                      child: Text(cat, style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        cat,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   );
                 }).toList(),
               ),
             ),
-            
             const SizedBox(height: 35),
-            
-            // --- Action Button ---
             SizedBox(
               width: double.infinity,
               height: 58,
@@ -117,7 +135,10 @@ class _AddProductSheetState extends State<AddProductSheet> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 onPressed: () {},
-                child: const Text("List Product Now", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  "List Product Now",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
@@ -142,7 +163,10 @@ class _AddProductSheetState extends State<AddProductSheet> {
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF2D43A6), width: 1.5)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: Color(0xFF2D43A6), width: 1.5),
+            ),
           ),
         ),
         const SizedBox(height: 20),

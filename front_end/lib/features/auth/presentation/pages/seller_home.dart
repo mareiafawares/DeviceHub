@@ -75,17 +75,17 @@ class _SellerHomePageState extends State<SellerHomePage> {
                 const Text("Your business activities at a glance", style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 25),
 
-                // --- عرض قائمة المتاجر بشكل ديناميكي ---
+               
                 if (user.shops.isEmpty)
                   const Center(child: Text("No shops registered yet.")),
                 
-                // نقوم بعمل Loop على كل المتاجر الموجودة في حساب ماريا
+               
                 ...user.shops.map((shop) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 15.0),
                     child: shop.isApproved 
-                        ? _buildModernShopCard(context, shop) // إذا مقبول اعرض الكرت الملون
-                        : _buildPendingStatusCard(shop),    // إذا معلق اعرض كرت الانتظار
+                        ? _buildModernShopCard(context, shop) 
+                        : _buildPendingStatusCard(shop),    
                   );
                 }).toList(),
 
@@ -103,7 +103,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
     );
   }
 
-  // ودجت المتجر المقبول (يستخدم بيانات ShopModel)
+ 
   Widget _buildModernShopCard(BuildContext context, ShopModel shop) {
     return Container(
       width: double.infinity,
@@ -149,7 +149,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
     context,
     MaterialPageRoute(
       builder: (context) => BlocProvider.value(
-        value: context.read<ProductCubit>(), // تمرير الـ Cubit الموجود حالياً للصفحة الجديدة
+        value: context.read<ProductCubit>(),
         child: ProductsPage(shopId: widget.shopId),
       ),
     ),
@@ -163,7 +163,7 @@ child: const Text("Manage Products"),
     );
   }
 
-  // ودجت صندوق الانتظار (يستخدم بيانات ShopModel)
+ 
   Widget _buildPendingStatusCard(ShopModel shop) {
     return Container(
       padding: const EdgeInsets.all(20),
