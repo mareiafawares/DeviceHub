@@ -3,17 +3,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:front_end/features/auth/presentation/cubit/product_cubit.dart';
 import 'package:front_end/features/auth/presentation/pages/login_page.dart';
 import 'package:front_end/features/auth/presentation/pages/products_page.dart';
+import 'package:front_end/features/auth/presentation/pages/seller_orders_page.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../widgets/create_shop_dialog.dart';
 import '../../data/models/user_model.dart';
 
 class SellerHomePage extends StatefulWidget {
-  final int shopId;
   final int userId;
   final String username;
 
-  const SellerHomePage({super.key, required this.userId, required this.username,required this.shopId});
+  const SellerHomePage({
+    super.key,
+    required this.userId,
+    required this.username,
+    required int shopId,
+  });
 
   @override
   State<SellerHomePage> createState() => _SellerHomePageState();
@@ -74,26 +79,23 @@ class _SellerHomePageState extends State<SellerHomePage> {
                 const SizedBox(height: 5),
                 const Text("Your business activities at a glance", style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 25),
-
-               
                 if (user.shops.isEmpty)
-                  const Center(child: Text("No shops registered yet.")),
-                
-               
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 30),
+                      child: Text("No shops registered yet.", style: TextStyle(color: Colors.grey)),
+                    ),
+                  ),
                 ...user.shops.map((shop) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 15.0),
-                    child: shop.isApproved 
-                        ? _buildModernShopCard(context, shop) 
-                        : _buildPendingStatusCard(shop),    
+                    child: shop.isApproved
+                        ? _buildModernShopCard(context, shop)
+                        : _buildPendingStatusCard(shop),
                   );
                 }).toList(),
-
                 const SizedBox(height: 10),
-
-                // زر إضافة متجر جديد يظهر دائماً في الأسفل
                 _buildAddAnotherShopButton(context),
-                
                 const SizedBox(height: 50),
               ],
             ),
@@ -103,7 +105,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
     );
   }
 
- 
   Widget _buildModernShopCard(BuildContext context, ShopModel shop) {
     return Container(
       width: double.infinity,
@@ -138,24 +139,51 @@ class _SellerHomePageState extends State<SellerHomePage> {
             const SizedBox(height: 5),
             Text(shop.description ?? "No description", style: const TextStyle(color: Colors.white70, fontSize: 14)),
             const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Theme.of(context).primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-           onPressed: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => BlocProvider.value(
-        value: context.read<ProductCubit>(),
-        child: ProductsPage(shopId: widget.shopId),
-      ),
-    ),
-  );
-},
-child: const Text("Manage Products"),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Theme.of(context).primaryColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BlocProvider.value(
+                            value: context.read<ProductCubit>(),
+                            child: ProductsPage(shopId: shop.id),
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.inventory_2_outlined, size: 18),
+                    label: const Text("Products"),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orangeAccent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SellerOrdersPage(shopId: shop.id),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.shopping_cart_checkout_outlined, size: 18),
+                    label: const Text("Orders"),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -163,7 +191,6 @@ child: const Text("Manage Products"),
     );
   }
 
- 
   Widget _buildPendingStatusCard(ShopModel shop) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -236,6 +263,10 @@ child: const Text("Manage Products"),
   }
 
   void _showCreateShopForm(BuildContext context) {
-    showDialog(context: context, barrierDismissible: false, builder: (_) => CreateShopDialog(userId: widget.userId));
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CreateShopDialog(userId: widget.userId),
+    );
   }
 }

@@ -33,47 +33,48 @@ class _LoginPageState extends State<LoginPage> {
       body: BlocProvider(
         create: (context) => getIt<AuthCubit>(),
         child: BlocConsumer<AuthCubit, AuthState>(
-         listener: (context, state) {
-  if (state is AuthSuccess) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Login Success!"),
-        backgroundColor: Colors.green,
-      ),
-    );
+          listener: (context, state) {
+            if (state is AuthSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Login Success!"),
+                  backgroundColor: Colors.green,
+                ),
+              );
 
-    final String? role = state.userRole;
+              final String? role = state.userRole;
 
-    
-    if (role == "admin") {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const AdminHomePage()),
-      );
-    } 
-   
-    else if (role == "seller") {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const SellerHomePage(userId: 1, username: '', shopId: 1,)),
-      );
-    } 
-    
-    else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const CustomerHome()),
-      );
-    }
-  } else if (state is AuthError) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(state.message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-},
+              if (role == "admin") {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AdminHomePage()),
+                );
+              } else if (role == "seller") {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SellerHomePage(
+                      userId: 1,
+                      username: '',
+                      shopId: 1,
+                    ),
+                  ),
+                );
+              } else {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CustomerHome()),
+                );
+              }
+            } else if (state is AuthError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
           builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -130,14 +131,14 @@ class _LoginPageState extends State<LoginPage> {
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                     onPressed: state is AuthLoading
-    ? null
-    : () {
-        context.read<AuthCubit>().login(
-              emailController.text.trim(),
-              passwordController.text,
-            );
-      },
+                      onPressed: state is AuthLoading
+                          ? null
+                          : () {
+                              context.read<AuthCubit>().login(
+                                    emailController.text.trim(),
+                                    passwordController.text,
+                                  );
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1A237E),
                         shape: RoundedRectangleBorder(

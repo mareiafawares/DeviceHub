@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import '../cubit/product_cubit.dart';
 
 class AddProductSheet extends StatefulWidget {
   final int shopId;
@@ -14,6 +16,20 @@ class _AddProductSheetState extends State<AddProductSheet> {
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
   String _selectedCategory = 'Electronics';
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _stockController = TextEditingController();
+  final TextEditingController _descController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    _stockController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,13 +52,13 @@ class _AddProductSheetState extends State<AddProductSheet> {
               child: Container(
                 width: 40,
                 height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
             const Text(
               "Product Details",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
@@ -71,30 +87,48 @@ class _AddProductSheetState extends State<AddProductSheet> {
                           borderRadius: BorderRadius.circular(18),
                           child: Image.file(_imageFile!, fit: BoxFit.cover),
                         )
-                      : Column(
+                      : const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             Icon(Icons.camera_enhance_rounded, color: Color(0xFF2D43A6), size: 35),
                             SizedBox(height: 8),
-                            Text(
-                              "Add Photo",
-                              style: TextStyle(color: Color(0xFF2D43A6), fontWeight: FontWeight.w600, fontSize: 12),
-                            ),
+                            Text("Add Photo", style: TextStyle(color: Color(0xFF2D43A6), fontWeight: FontWeight.w600, fontSize: 12)),
                           ],
                         ),
                 ),
               ),
             ),
             const SizedBox(height: 30),
-            _buildModernField(label: "Product Name", hint: "e.g. iPhone 15 Pro", icon: Icons.shopping_bag_outlined),
+            _buildModernField(
+              label: "Product Name",
+              hint: "e.g. iPhone 15 Pro",
+              icon: Icons.shopping_bag_outlined,
+              controller: _nameController,
+            ),
             Row(
               children: [
-                Expanded(child: _buildModernField(label: "Price", hint: "0.00", icon: Icons.sell_outlined, isNumber: true)),
+                Expanded(
+                  child: _buildModernField(
+                    label: "Price",
+                    hint: "0.00",
+                    icon: Icons.sell_outlined,
+                    isNumber: true,
+                    controller: _priceController,
+                  ),
+                ),
                 const SizedBox(width: 15),
-                Expanded(child: _buildModernField(label: "Stock", hint: "Qty", icon: Icons.inventory_2_outlined, isNumber: true)),
+                Expanded(
+                  child: _buildModernField(
+                    label: "Stock",
+                    hint: "Qty",
+                    icon: Icons.inventory_2_outlined,
+                    isNumber: true,
+                    controller: _stockController,
+                  ),
+                ),
               ],
             ),
-            const Text("Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Text("Category", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 12),
             SizedBox(
               height: 45,
@@ -114,10 +148,7 @@ class _AddProductSheetState extends State<AddProductSheet> {
                       alignment: Alignment.center,
                       child: Text(
                         cat,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.w600),
                       ),
                     ),
                   );
@@ -131,10 +162,26 @@ class _AddProductSheetState extends State<AddProductSheet> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2D43A6),
-                  elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  if (_nameController.text.isNotEmpty && _priceController.text.isNotEmpty) {
+                    final Map<String, dynamic> productData = {
+                      "name": _nameController.text,
+                      "price": double.tryParse(_priceController.text) ?? 0.0,
+                      "description": _descController.text.isEmpty ? "No description" : _descController.text,
+                      "imageUrl": _imageFile?.path ?? "https://via.placeholder.com/150",
+                      "stockQuantity": int.tryParse(_stockController.text) ?? 0,
+                    };
+
+                    context.read<ProductCubit>().addProduct(widget.shopId, productData);
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Please enter Name and Price")),
+                    );
+                  }
+                },
                 child: const Text(
                   "List Product Now",
                   style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
@@ -147,13 +194,20 @@ class _AddProductSheetState extends State<AddProductSheet> {
     );
   }
 
-  Widget _buildModernField({required String label, required String hint, required IconData icon, bool isNumber = false}) {
+  Widget _buildModernField({
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool isNumber = false,
+    required TextEditingController controller,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87)),
         const SizedBox(height: 8),
         TextField(
+          controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
           decoration: InputDecoration(
             hintText: hint,
@@ -162,7 +216,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
             fillColor: const Color(0xFFF8F9FB),
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(15),
               borderSide: const BorderSide(color: Color(0xFF2D43A6), width: 1.5),
