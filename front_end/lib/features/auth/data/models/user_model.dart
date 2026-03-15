@@ -37,6 +37,7 @@ class ShopModel {
   final int id;
   final String name;
   final String? description;
+  final String? imageUrl;
   final bool isApproved;
   final bool hasShopRequest;
 
@@ -44,6 +45,7 @@ class ShopModel {
     required this.id,
     required this.name,
     this.description,
+    this.imageUrl, 
     required this.isApproved,
     required this.hasShopRequest,
   });
@@ -53,6 +55,7 @@ class ShopModel {
       id: json['id'] ?? 0,
       name: json['name'] ?? 'Unknown Shop',
       description: json['description'],
+      imageUrl: json['image_url'], 
       isApproved: json['is_approved'] ?? false,
       hasShopRequest: json['has_shop_request'] ?? false,
     );

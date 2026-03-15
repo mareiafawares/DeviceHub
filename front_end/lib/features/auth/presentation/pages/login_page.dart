@@ -43,6 +43,7 @@ class _LoginPageState extends State<LoginPage> {
               );
 
               final String? role = state.userRole;
+              final user = state.user; 
 
               if (role == "admin") {
                 Navigator.pushReplacement(
@@ -50,13 +51,13 @@ class _LoginPageState extends State<LoginPage> {
                   MaterialPageRoute(builder: (context) => const AdminHomePage()),
                 );
               } else if (role == "seller") {
+                
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const SellerHomePage(
-                      userId: 1,
-                      username: '',
-                      shopId: 1,
+                    builder: (context) => SellerHomePage(
+                      userId: user.id,
+                      username: user.username,
                     ),
                   ),
                 );

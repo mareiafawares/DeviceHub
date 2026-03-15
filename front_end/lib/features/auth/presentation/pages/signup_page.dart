@@ -16,17 +16,14 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
- 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   
- 
   String selectedRole = 'customer'; 
 
   @override
   void dispose() {
-   
     nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
@@ -36,7 +33,6 @@ class _SignupPageState extends State<SignupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
       appBar: AppBar(
         backgroundColor: Colors.transparent, 
         elevation: 0, 
@@ -54,11 +50,17 @@ class _SignupPageState extends State<SignupPage> {
                 ),
               );
 
-             
+              final user = state.user; 
+
               if (selectedRole == 'seller') {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const SellerHomePage(userId: 1, username: '', shopId: 1,)),
+                  MaterialPageRoute(
+                    builder: (context) => SellerHomePage(
+                      userId: user.id,
+                      username: user.username, 
+                    ),
+                  ),
                   (route) => false, 
                 );
               } else {
@@ -95,15 +97,29 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   const SizedBox(height: 40),
                   
-                 
-                  _buildTextField(label: "Full Name", hint: "Maria Fawares", icon: Icons.person_outline, controller: nameController),
+                  _buildTextField(
+                    label: "Full Name", 
+                    hint: "e.g. Maria Fawares", 
+                    icon: Icons.person_outline, 
+                    controller: nameController
+                  ),
                   const SizedBox(height: 20),
-                  _buildTextField(label: "Email", hint: "example@email.com", icon: Icons.email_outlined, controller: emailController),
+                  _buildTextField(
+                    label: "Email", 
+                    hint: "example@email.com", 
+                    icon: Icons.email_outlined, 
+                    controller: emailController
+                  ),
                   const SizedBox(height: 20),
-                  _buildTextField(label: "Password", hint: "••••••••", icon: Icons.lock_outline, isPassword: true, controller: passwordController),
+                  _buildTextField(
+                    label: "Password", 
+                    hint: "••••••••", 
+                    icon: Icons.lock_outline, 
+                    isPassword: true, 
+                    controller: passwordController
+                  ),
                   const SizedBox(height: 30),
 
-                  
                   Text("Join as:", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 10),
                   Row(
@@ -130,19 +146,17 @@ class _SignupPageState extends State<SignupPage> {
                   
                   const SizedBox(height: 40),
                   
-                 
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
                       onPressed: state is AuthLoading ? null : () {
-                       
-context.read<AuthCubit>().signUp(
-  username: nameController.text,
-  email: emailController.text,   
-  password: passwordController.text,
-  role: selectedRole,             
-);
+                        context.read<AuthCubit>().signUp(
+                          username: nameController.text.trim(),
+                          email: emailController.text.trim(),   
+                          password: passwordController.text,
+                          role: selectedRole,             
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1A237E), 
@@ -166,7 +180,6 @@ context.read<AuthCubit>().signUp(
     );
   }
 
-  
   Widget _buildTextField({
     required String label, 
     required String hint, 

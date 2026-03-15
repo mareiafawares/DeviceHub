@@ -1,10 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/auth_cubit.dart';
 
 class CreateShopDialog extends StatefulWidget {
   final int userId;
-  const CreateShopDialog({super.key, required this.userId});
+  final String ownerName;
+
+  const CreateShopDialog({super.key, required this.userId, required this.ownerName});
 
   @override
   State<CreateShopDialog> createState() => _CreateShopDialogState();
@@ -13,6 +17,19 @@ class CreateShopDialog extends StatefulWidget {
 class _CreateShopDialogState extends State<CreateShopDialog> {
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
+  File? _imageFile;
+
+  Future<void> _pickImage() async {
+    final pickedFile = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -25,70 +42,145 @@ class _CreateShopDialogState extends State<CreateShopDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Create Your Shop",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              "Enter your shop details to send a request to the admin.",
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: "Shop Name",
-                prefixIcon: const Icon(Icons.storefront),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: _descController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: "Description",
-                prefixIcon: const Icon(Icons.description_outlined),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 25),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel"),
+      elevation: 10,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Create Your Shop",
+                style: TextStyle(
+                  fontSize: 22, 
+                  fontWeight: FontWeight.bold, 
+                  color: Color(0xFF1A237E),
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A237E),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              const SizedBox(height: 20),
+              
+              GestureDetector(
+                onTap: _pickImage,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF1A237E), width: 2),
+                      ),
+                      child: CircleAvatar(
+                        radius: 55,
+                        backgroundColor: Colors.grey[100],
+                        backgroundImage: _imageFile != null ? FileImage(_imageFile!) : null,
+                        child: _imageFile == null 
+                            ? const Icon(Icons.add_a_photo_outlined, size: 40, color: Color(0xFF1A237E)) 
+                            : null,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 5,
+                      right: 5,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF1A237E), 
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                "Upload Shop Logo",
+                style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500),
+              ),
+
+              const SizedBox(height: 30),
+              
+              TextField(
+                controller: TextEditingController(text: widget.ownerName),
+                readOnly: true,
+                style: const TextStyle(color: Colors.black87),
+                decoration: InputDecoration(
+                  labelText: "Shop Owner",
+                  prefixIcon: const Icon(Icons.person, color: Color(0xFF1A237E)),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+              ),
+              const SizedBox(height: 15),
+
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: "Shop Name",
+                  hintText: "Enter your shop name",
+                  prefixIcon: const Icon(Icons.store, color: Color(0xFF1A237E)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+              ),
+              const SizedBox(height: 15),
+
+              TextField(
+                controller: _descController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: "Description",
+                  hintText: "Tell us about your shop...",
+                  prefixIcon: const Icon(Icons.info_outline, color: Color(0xFF1A237E)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontSize: 16)),
+                    ),
                   ),
-                  onPressed: () {
-                    if (_nameController.text.isNotEmpty) {
-                      context.read<AuthCubit>().submitShopRequest(
-                            userId: widget.userId,
-                            shopName: _nameController.text,
-                            shopDescription: _descController.text,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1A237E),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        if (_nameController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Please enter a shop name")),
                           );
-                      Navigator.pop(context);
-                    }
-                  },
-                  child: const Text("Submit Request"),
-                ),
-              ],
-            ),
-          ],
+                          return;
+                        }
+                        
+                        context.read<AuthCubit>().submitShopRequest(
+                          userId: widget.userId,
+                          shopName: _nameController.text.trim(),
+                          shopDescription: _descController.text.trim(),
+                          imageFile: _imageFile, 
+                        );
+                        
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Submit Request", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

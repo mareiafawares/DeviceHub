@@ -4,6 +4,7 @@ import 'package:front_end/features/auth/presentation/cubit/product_cubit.dart';
 import 'package:front_end/features/auth/presentation/pages/login_page.dart';
 import 'package:front_end/features/auth/presentation/pages/products_page.dart';
 import 'package:front_end/features/auth/presentation/pages/seller_orders_page.dart';
+import 'package:front_end/features/auth/presentation/widgets/seller_stat_card.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../widgets/create_shop_dialog.dart';
@@ -13,12 +14,7 @@ class SellerHomePage extends StatefulWidget {
   final int userId;
   final String username;
 
-  const SellerHomePage({
-    super.key,
-    required this.userId,
-    required this.username,
-    required int shopId,
-  });
+  const SellerHomePage({super.key, required this.userId, required this.username});
 
   @override
   State<SellerHomePage> createState() => _SellerHomePageState();
@@ -37,65 +33,56 @@ class _SellerHomePageState extends State<SellerHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FD),
+      drawer: _buildDrawer(context),
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
-        title: const Text("Seller Dashboard", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Theme.of(context).primaryColor,
+        title: const Text(
+          "Business Dashboard",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        backgroundColor: const Color(0xFF1A237E),
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginPage()),
-            ),
-          ),
-        ],
       ),
-      body: BlocConsumer<AuthCubit, AuthState>(
-        listener: (context, state) {
-          if (state is ShopRequestSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("New request sent successfully!"), backgroundColor: Colors.green),
-            );
-          }
-        },
+      body: BlocBuilder<AuthCubit, AuthState>(
         builder: (context, state) {
           UserModel? user;
           if (state is AuthSuccess) user = state.user;
-
-          if (user == null) return const Center(child: CircularProgressIndicator());
+          
+          if (user == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
           return RefreshIndicator(
             onRefresh: () => context.read<AuthCubit>().refreshUserData(widget.userId),
             child: ListView(
               padding: const EdgeInsets.all(20.0),
               children: [
-                Text(
-                  "Welcome, ${widget.username} 👋",
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 5),
-                const Text("Your business activities at a glance", style: TextStyle(color: Colors.grey)),
+                _buildWelcomeHeader(),
                 const SizedBox(height: 25),
-                if (user.shops.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 30),
-                      child: Text("No shops registered yet.", style: TextStyle(color: Colors.grey)),
-                    ),
+                _buildStatsRow(user),
+                const SizedBox(height: 30),
+                const Text(
+                  "My Stores",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A237E),
                   ),
-                ...user.shops.map((shop) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 15.0),
-                    child: shop.isApproved
-                        ? _buildModernShopCard(context, shop)
-                        : _buildPendingStatusCard(shop),
-                  );
-                }).toList(),
-                const SizedBox(height: 10),
-                _buildAddAnotherShopButton(context),
+                ),
+                const SizedBox(height: 15),
+                
+                if (user.shops.isEmpty)
+                  _buildEmptyState()
+                else
+                  ...user.shops.map((shop) => Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: shop.isApproved
+                            ? _buildShopCard(shop)
+                            : _buildPendingCard(shop),
+                      )).toList(),
+
+                _buildAddShopButton(),
                 const SizedBox(height: 50),
               ],
             ),
@@ -105,114 +92,220 @@ class _SellerHomePageState extends State<SellerHomePage> {
     );
   }
 
-  Widget _buildModernShopCard(BuildContext context, ShopModel shop) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Theme.of(context).primaryColor, Theme.of(context).primaryColor.withOpacity(0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _buildWelcomeHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Welcome, ${widget.username} 👋",
+          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
         ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: Theme.of(context).primaryColor.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))
+        const Text(
+          "Manage your business and track orders",
+          style: TextStyle(color: Colors.grey, fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsRow(UserModel user) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          SellerStatCard(
+            title: "Stores",
+            value: user.shops.length.toString(),
+            icon: Icons.storefront,
+            color: Colors.blue,
+          ),
+          const SizedBox(width: 12),
+          const SellerStatCard(
+            title: "Orders",
+            value: "0",
+            icon: Icons.shopping_cart_outlined,
+            color: Colors.orange,
+          ),
+          const SizedBox(width: 12),
+          const SellerStatCard(
+            title: "Revenue",
+            value: "0 JD",
+            icon: Icons.account_balance_wallet_outlined,
+            color: Colors.green,
+          ),
         ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text("VERIFIED SHOP", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 10)),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.white, size: 22),
-                  onPressed: () => _confirmDelete(context, shop.id),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(shop.name, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 5),
-            Text(shop.description ?? "No description", style: const TextStyle(color: Colors.white70, fontSize: 14)),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Theme.of(context).primaryColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BlocProvider.value(
-                            value: context.read<ProductCubit>(),
-                            child: ProductsPage(shopId: shop.id),
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.inventory_2_outlined, size: 18),
-                    label: const Text("Products"),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orangeAccent,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SellerOrdersPage(shopId: shop.id),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.shopping_cart_checkout_outlined, size: 18),
-                    label: const Text("Orders"),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _buildPendingStatusCard(ShopModel shop) {
+  Widget _buildShopCard(ShopModel shop) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                height: 90,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                ),
+              ),
+              Positioned(
+                bottom: -30,
+                left: 20,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: CircleAvatar(
+                    radius: 35,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: (shop.imageUrl != null && shop.imageUrl!.isNotEmpty)
+                        ? NetworkImage(shop.imageUrl!)
+                        : null,
+                    child: (shop.imageUrl == null || shop.imageUrl!.isEmpty)
+                        ? Text(
+                            shop.name[0].toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1A237E),
+                            ),
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 35),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      shop.name,
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    const Icon(Icons.verified, color: Colors.blue, size: 20),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  shop.description ?? "No description available for this store.",
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 15),
+                  child: Divider(),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BlocProvider.value(
+                                value: context.read<ProductCubit>(),
+                                child: ProductsPage(shopId: shop.id),
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.inventory_2_outlined, size: 18),
+                        label: const Text("Products"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade50,
+                          foregroundColor: Colors.blue.shade800,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SellerOrdersPage(shopId: shop.id),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                        label: const Text("Orders"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A237E),
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingCard(ShopModel shop) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
+        color: Colors.orange.withOpacity(0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+        border: Border.all(color: Colors.orange.withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          const SizedBox(
-            width: 25,
-            height: 25,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
-          ),
-          const SizedBox(width: 20),
+          const Icon(Icons.pending_actions, color: Colors.orange),
+          const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("${shop.name} (Pending)", style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16)),
-                const Text("This shop is being reviewed by the admin.", style: TextStyle(color: Colors.black54, fontSize: 13)),
+                Text(
+                  shop.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const Text(
+                  "Under Review by Admin",
+                  style: TextStyle(color: Colors.black54, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -221,52 +314,88 @@ class _SellerHomePageState extends State<SellerHomePage> {
     );
   }
 
-  Widget _buildAddAnotherShopButton(BuildContext context) {
-    return InkWell(
-      onTap: () => _showCreateShopForm(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 25),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.withOpacity(0.2), width: 2),
+  Widget _buildAddShopButton() {
+    return OutlinedButton.icon(
+      onPressed: () => showDialog(
+        context: context,
+        builder: (_) => CreateShopDialog(
+          userId: widget.userId,
+          ownerName: widget.username,
         ),
-        child: Column(
-          children: [
-            Icon(Icons.add_business_rounded, color: Theme.of(context).primaryColor.withOpacity(0.5), size: 35),
-            const SizedBox(height: 10),
-            const Text("Register New Shop Unit", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-          ],
-        ),
+      ),
+      icon: const Icon(Icons.add_business_rounded),
+      label: const Text("Register New Store"),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        side: const BorderSide(color: Color(0xFF1A237E), width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
     );
   }
 
-  void _confirmDelete(BuildContext context, int shopId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Confirm Deletion"),
-        content: const Text("Do you want to delete this shop?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          TextButton(
-            onPressed: () {
-              context.read<AuthCubit>().deleteShop(shopId);
-              Navigator.pop(ctx);
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
-          ),
+  Widget _buildEmptyState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      alignment: Alignment.center,
+      child: const Column(
+        children: [
+          Icon(Icons.store_mall_directory_outlined, size: 60, color: Colors.grey),
+          SizedBox(height: 10),
+          Text("No stores found.", style: TextStyle(color: Colors.grey)),
         ],
       ),
     );
   }
 
-  void _showCreateShopForm(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => CreateShopDialog(userId: widget.userId),
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: Column(
+        children: [
+          UserAccountsDrawerHeader(
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Text(
+                widget.username.isNotEmpty ? widget.username[0].toUpperCase() : "U",
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A237E),
+                ),
+              ),
+            ),
+            accountName: Text(
+              widget.username,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            accountEmail: const Text("Verified Seller"),
+            decoration: const BoxDecoration(color: Color(0xFF1A237E)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.dashboard_outlined),
+            title: const Text("Dashboard"),
+            onTap: () => Navigator.pop(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: const Text("Profile"),
+            onTap: () => Navigator.pop(context),
+          ),
+          const Divider(),
+          const Spacer(),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text("Logout", style: TextStyle(color: Colors.red)),
+            onTap: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 }

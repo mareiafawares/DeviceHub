@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 
 class ApiService {
@@ -28,6 +29,40 @@ class ApiService {
         'auth/login',
         data: formData,
         options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Response> createShopRequest({
+    required int userId,
+    required String shopName,
+    required String shopDescription,
+    File? imageFile,
+  }) async {
+    try {
+      Map<String, dynamic> data = {
+        "shopName": shopName,
+        "shopDescription": shopDescription,
+      };
+
+      if (imageFile != null) {
+        String fileName = imageFile.path.split('/').last;
+        data["image"] = await MultipartFile.fromFile(
+          imageFile.path,
+          filename: fileName,
+        );
+      }
+
+      FormData formData = FormData.fromMap(data);
+
+      return await _dio.post(
+        'users/create-shop/$userId',
+        data: formData,
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
       );
     } catch (e) {
       rethrow;

@@ -1,3 +1,4 @@
+import 'dart:io';
 import "package:flutter_bloc/flutter_bloc.dart";
 import '../../domain/repositories/auth_repository.dart';
 import '../../data/models/user_model.dart';
@@ -68,7 +69,8 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> submitShopRequest({
     required int userId,
     required String shopName,
-    required String shopDescription,
+    required String shopDescription, 
+    File? imageFile,
   }) async {
     emit(AuthLoading());
     try {
@@ -76,6 +78,7 @@ class AuthCubit extends Cubit<AuthState> {
         userId: userId,
         shopName: shopName,
         shopDescription: shopDescription,
+        imageFile: imageFile,
       );
       emit(ShopRequestSuccess());
       await refreshUserData(userId);

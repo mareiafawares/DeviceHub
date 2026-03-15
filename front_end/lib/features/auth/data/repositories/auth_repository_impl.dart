@@ -1,4 +1,4 @@
-// ignore: depend_on_referenced_packages
+import 'dart:io';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -10,7 +10,6 @@ class AuthRepositoryImpl implements AuthRepository {
 
   AuthRepositoryImpl(this.apiService);
 
-  
   @override
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
@@ -40,20 +39,31 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  
   @override
   Future<Map<String, dynamic>> createShopRequest({
     required int userId,
     required String shopName,
     required String shopDescription,
+    File? imageFile,
   }) async {
     try {
+      Map<String, dynamic> dataMap = {
+        'shop_name': shopName,
+        'shop_description': shopDescription,
+      };
+
+      if (imageFile != null) {
+        dataMap['image'] = await MultipartFile.fromFile(
+          imageFile.path,
+          filename: imageFile.path.split('/').last,
+        );
+      }
+
+      FormData formData = FormData.fromMap(dataMap);
+
       final response = await apiService.post(
         'users/create-shop/$userId',
-        data: {
-          'shop_name': shopName,
-          'shop_description': shopDescription,
-        },
+        data: formData,
       );
       return response.data;
     } on DioException catch (e) {
@@ -83,7 +93,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  
   @override
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
@@ -103,7 +112,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
- 
   @override
   Future<List<Map<String, dynamic>>> getShopProducts(int shopId) async {
     try {
@@ -151,8 +159,6 @@ class AuthRepositoryImpl implements AuthRepository {
       throw Exception(e.response?.data['detail'] ?? "Failed to delete product");
     }
   }
-
-  
 
   @override
   Future<Either<String, List<OrderModel>>> getShopOrders(int shopId) async {
