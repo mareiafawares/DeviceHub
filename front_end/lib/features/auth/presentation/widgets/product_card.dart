@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:front_end/core/network/dio_client.dart';
 import 'package:front_end/features/auth/data/models/product_model.dart';
 
 class ProductCard extends StatelessWidget {
@@ -7,8 +8,18 @@ class ProductCard extends StatelessWidget {
 
   const ProductCard({super.key, required this.product, required this.onTap});
 
+  static String _fullImageUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http')) return url;
+    final base = kBaseUrl.endsWith('/') ? kBaseUrl : '$kBaseUrl/';
+    return '$base${url.startsWith('/') ? url.substring(1) : url}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final imageUrl = product.images.isNotEmpty
+        ? _fullImageUrl(product.images.first.url)
+        : null;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(15),
@@ -34,9 +45,9 @@ class ProductCard extends StatelessWidget {
                 tag: 'product_hero_${product.id}',
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                  child: product.images.isNotEmpty
+                  child: imageUrl != null && imageUrl.isNotEmpty
                       ? Image.network(
-                          product.images[0].url,
+                          imageUrl,
                           fit: BoxFit.cover,
                           width: double.infinity,
                           errorBuilder: (context, error, stackTrace) => Container(
@@ -68,9 +79,9 @@ class ProductCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${product.price} \$',
+                        '${product.price.toStringAsFixed(1)} JD',
                         style: const TextStyle(
-                          color: Colors.blueAccent,
+                          color: Color(0xFF1A237E),
                           fontWeight: FontWeight.bold,
                         ),
                       ),

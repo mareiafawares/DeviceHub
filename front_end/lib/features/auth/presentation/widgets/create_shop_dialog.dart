@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; 
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/auth_cubit.dart';
+import '../cubit/auth_state.dart';
 
 class CreateShopDialog extends StatefulWidget {
   final int userId;
@@ -18,6 +19,7 @@ class _CreateShopDialogState extends State<CreateShopDialog> {
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   File? _imageFile;
+  bool _isSubmitting = false;
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(
@@ -157,24 +159,51 @@ class _CreateShopDialogState extends State<CreateShopDialog> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      onPressed: () {
-                        if (_nameController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Please enter a shop name")),
-                          );
-                          return;
-                        }
-                        
-                        context.read<AuthCubit>().submitShopRequest(
-                          userId: widget.userId,
-                          shopName: _nameController.text.trim(),
-                          shopDescription: _descController.text.trim(),
-                          imageFile: _imageFile, 
-                        );
-                        
-                        Navigator.pop(context);
-                      },
-                      child: const Text("Submit Request", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      onPressed: _isSubmitting
+                          ? null
+                          : () async {
+                              if (_nameController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Please enter a shop name")),
+                                );
+                                return;
+                              }
+                              setState(() => _isSubmitting = true);
+                              final success = await context.read<AuthCubit>().submitShopRequest(
+                                    shopName: _nameController.text.trim(),
+                                    shopDescription: _descController.text.trim(),
+                                    imageFile: _imageFile,
+                                  );
+                              if (!mounted) return;
+                              setState(() => _isSubmitting = false);
+                              if (success) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Shop request submitted successfully"),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      context.read<AuthCubit>().state is AuthError
+                                          ? (context.read<AuthCubit>().state as AuthError).message
+                                          : "Failed to submit request",
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text("Submit Request", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

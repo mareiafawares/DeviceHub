@@ -7,17 +7,42 @@ import '../models/order_model.dart';
 import '../models/product_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  final ApiService apiService;
+  AuthRepositoryImpl(this._api);
 
-  AuthRepositoryImpl(this.apiService);
+  final ApiService _api;
+
+  static String _errorDetail(dynamic detail, String fallback) {
+    if (detail == null) return fallback;
+    if (detail is String) return detail;
+    if (detail is List && detail.isNotEmpty) {
+      final first = detail.first;
+      if (first is Map && first['msg'] != null) return first['msg'].toString();
+      return detail.join('; ');
+    }
+    return fallback;
+  }
+
+  static String? _tokenFrom(Map<String, dynamic> data) {
+    final t = data['access_token'] ?? data['accessToken'] ?? data['token'];
+    return t is String && t.isNotEmpty ? t : null;
+  }
+
+  static Map<String, dynamic> _toMap(dynamic data) {
+    if (data is Map) return Map<String, dynamic>.from(data);
+    return <String, dynamic>{};
+  }
 
   @override
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      final response = await apiService.login(email, password);
-      return response.data;
+      final res = await _api.login(email, password);
+      final data = _toMap(res.data);
+      final token = _tokenFrom(data);
+      if (token != null) await _api.saveAccessToken(token);
+      return data;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Login failed");
+      final detail = e.response?.data is Map ? (e.response!.data as Map)['detail'] : null;
+      throw Exception(_errorDetail(detail, 'Login failed'));
     }
   }
 
@@ -29,160 +54,201 @@ class AuthRepositoryImpl implements AuthRepository {
     required String role,
   }) async {
     try {
-      final response = await apiService.post('users/register', data: {
-        'username': username,
-        'email': email,
-        'password': password,
-        'role': role,
-      });
-      return response.data; 
+      final res = await _api.signup(username: username, email: email, password: password, role: role);
+      final data = _toMap(res.data);
+      final token = _tokenFrom(data);
+      if (token != null) await _api.saveAccessToken(token);
+      return data;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Registration failed");
+      final detail = e.response?.data is Map ? (e.response!.data as Map)['detail'] : null;
+      throw Exception(_errorDetail(detail, 'Registration failed'));
     }
   }
 
   @override
+  Future<Map<String, dynamic>> getMe({String? token}) async {
+    try {
+      final res = await _api.getMe(token: token);
+      final data = res.data;
+      if (data is! Map) throw Exception('Invalid getMe response');
+      return Map<String, dynamic>.from(data);
+    } on DioException catch (e) {
+      final detail = e.response?.data is Map ? (e.response!.data as Map)['detail'] : null;
+      throw Exception(_errorDetail(detail, 'Failed to load profile'));
+    }
+  }
+
+  @override
+  Future<void> clearSession() => _api.clearAccessToken();
+
+  @override
   Future<Map<String, dynamic>> createShopRequest({
-    required int userId,
     required String shopName,
     required String shopDescription,
     File? imageFile,
   }) async {
     try {
-      Map<String, dynamic> dataMap = {
-        'shopName': shopName, 
-        'shopDescription': shopDescription,
-      };
-
-      if (imageFile != null) {
-        dataMap['image'] = await MultipartFile.fromFile(
-          imageFile.path,
-          filename: imageFile.path.split('/').last,
-        );
+      String imageUrl = '';
+      if (imageFile != null && await imageFile.exists()) {
+        imageUrl = await _api.uploadImage(imageFile);
       }
-
-      FormData formData = FormData.fromMap(dataMap);
-
-      final response = await apiService.post(
-        'users/create-shop/$userId',
-        data: formData,
-      );
-      return response.data;
+      final body = <String, dynamic>{
+        'shop_name': shopName,
+        'shop_description': shopDescription,
+        'image_url': imageUrl,
+      };
+      final res = await _api.post('users/create-shop', data: body, options: Options(contentType: Headers.jsonContentType));
+      return _toMap(res.data);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Failed to submit shop request");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to submit shop request');
     }
   }
 
   @override
   Future<List<Map<String, dynamic>>> getPendingShopRequests() async {
     try {
-      final response = await apiService.get('admin/shop-requests');
-      return List<Map<String, dynamic>>.from(response.data);
+      final res = await _api.get('admin/shop-requests');
+      return List<Map<String, dynamic>>.from(res.data as List);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Error fetching requests");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Error fetching requests');
     }
   }
 
   @override
   Future<void> updateShopStatus({required int userId, required bool approve}) async {
     try {
-      await apiService.put(
-        'admin/approve-shop/$userId',
-        queryParameters: {'approve': approve},
-      );
+      await _api.put('admin/approve-shop/$userId', queryParameters: {'approve': approve});
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Failed to update status");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to update status');
     }
   }
 
   @override
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
-      final response = await apiService.get('admin/users');
-      return List<Map<String, dynamic>>.from(response.data);
+      final res = await _api.get('admin/users');
+      return List<Map<String, dynamic>>.from(res.data as List);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Failed to load users");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to load users');
     }
   }
 
   @override
   Future<void> deleteUser(int userId) async {
     try {
-      await apiService.delete('admin/users/$userId');
+      await _api.delete('admin/users/$userId');
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Failed to delete user");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to delete user');
     }
   }
 
   @override
   Future<List<ProductModel>> getAllProducts() async {
     try {
-      final response = await apiService.get('products/all');
-      final List data = response.data;
-      return data.map((json) => ProductModel.fromJson(json)).toList();
+      final res = await _api.get('products/all');
+      return (res.data as List).map((j) => ProductModel.fromJson(j as Map<String, dynamic>)).toList();
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Failed to load products");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to load products');
     }
   }
 
   @override
   Future<List<ProductModel>> getShopProducts(int shopId) async {
     try {
-      final response = await apiService.get('products/shop/$shopId');
-      final List data = response.data;
-      return data.map((json) => ProductModel.fromJson(json)).toList();
+      final res = await _api.get('products/shop/$shopId');
+      return (res.data as List).map((j) => ProductModel.fromJson(j as Map<String, dynamic>)).toList();
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Failed to fetch products");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to fetch products');
+    }
+  }
+
+  @override
+  Future<ProductModel> getProduct(int productId) async {
+    try {
+      final res = await _api.getProduct(productId);
+      final data = res.data;
+      if (data is! Map) throw Exception('Invalid product response');
+      return ProductModel.fromJson(Map<String, dynamic>.from(data));
+    } on DioException catch (e) {
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to load product');
     }
   }
 
   @override
   Future<void> addProduct(int shopId, Map<String, dynamic> productData) async {
     try {
-      FormData formData = FormData.fromMap({
-        "name": productData['name'],
-        "price": productData['price'],
-        "description": productData['description'] ?? "No description",
-        "stockQuantity": productData['stockQuantity'] ?? 0,
-        "image": await MultipartFile.fromFile(
-          productData['imageUrl'],
-          filename: productData['imageUrl'].split('/').last,
-        ),
-      });
-
-      await apiService.post('products/add/$shopId', data: formData);
+      final imageUrls = productData['image_urls'] as List<String>? ?? [];
+      await _api.addProduct(
+        shopId: shopId,
+        name: productData['name'] as String,
+        price: (productData['price'] is int)
+            ? (productData['price'] as int).toDouble()
+            : (productData['price'] as num).toDouble(),
+        description: productData['description'] as String? ?? 'No description',
+        stockQuantity: productData['stock_quantity'] as int? ?? productData['stockQuantity'] as int? ?? 0,
+        imageUrls: imageUrls,
+      );
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Failed to add product");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to add product');
+    }
+  }
+
+  @override
+  Future<void> addProductImages(int productId, List<String> urls) async {
+    try {
+      await _api.addProductImages(productId, urls);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to add images');
+    }
+  }
+
+  @override
+  Future<void> deleteProductImage(int productId, int imageId) async {
+    try {
+      await _api.deleteProductImage(productId, imageId);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to delete image');
     }
   }
 
   @override
   Future<void> updateProduct(int productId, Map<String, dynamic> productData) async {
     try {
-      await apiService.put('products/update/$productId', data: productData);
+      final body = <String, dynamic>{};
+      if (productData.containsKey('name')) body['name'] = productData['name'];
+      if (productData.containsKey('price')) body['price'] = productData['price'] is int ? (productData['price'] as int).toDouble() : (productData['price'] as num).toDouble();
+      if (productData.containsKey('description')) body['description'] = productData['description'];
+      if (productData.containsKey('stock_quantity')) body['stock_quantity'] = productData['stock_quantity'];
+      if (productData.containsKey('stockQuantity')) body['stock_quantity'] = productData['stockQuantity'];
+      if (productData.containsKey('discount_price')) body['discount_price'] = productData['discount_price'];
+      if (productData.containsKey('discountPrice')) body['discount_price'] = productData['discountPrice'];
+      if (productData.containsKey('category')) body['category'] = productData['category'];
+      if (productData.containsKey('status')) body['status'] = productData['status'];
+      if (productData.containsKey('is_new')) body['is_new'] = productData['is_new'];
+      if (productData.containsKey('isNew')) body['is_new'] = productData['isNew'];
+      await _api.updateProduct(productId, body);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Failed to update product");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to update product');
     }
   }
 
   @override
   Future<void> deleteProduct(int productId) async {
     try {
-      await apiService.delete('products/delete/$productId');
+      await _api.delete('products/delete/$productId');
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? "Failed to delete product");
+      throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to delete product');
     }
   }
 
   @override
   Future<Either<String, List<OrderModel>>> getShopOrders(int shopId) async {
     try {
-      final response = await apiService.get('orders/shop/$shopId');
-      final List ordersJson = response.data;
-      final orders = ordersJson.map((e) => OrderModel.fromJson(e)).toList();
-      return Right(orders);
+      final res = await _api.get('orders/shop/$shopId');
+      final list = (res.data as List).map((e) => OrderModel.fromJson(e as Map<String, dynamic>)).toList();
+      return Right(list);
     } on DioException catch (e) {
-      return Left(e.response?.data['detail'] ?? "Failed to fetch orders");
+      return Left(e.response?.data is Map ? (e.response!.data as Map)['detail']?.toString() ?? 'Failed to fetch orders' : 'Failed to fetch orders');
     } catch (e) {
       return Left(e.toString());
     }
@@ -194,13 +260,10 @@ class AuthRepositoryImpl implements AuthRepository {
     required String status,
   }) async {
     try {
-      await apiService.put(
-        'orders/update-status/$orderId',
-        queryParameters: {'status': status},
-      );
-      return const Right("Order status updated successfully");
+      await _api.put('orders/update-status/$orderId', queryParameters: {'status': status});
+      return const Right('OK');
     } on DioException catch (e) {
-      return Left(e.response?.data['detail'] ?? "Failed to update order status");
+      return Left(e.response?.data is Map ? (e.response!.data as Map)['detail']?.toString() ?? 'Failed' : 'Failed');
     } catch (e) {
       return Left(e.toString());
     }

@@ -2,11 +2,21 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:front_end/core/service_locator.dart';
+import 'package:front_end/core/api_service.dart';
 import '../cubit/product_cubit.dart';
 
 class AddProductSheet extends StatefulWidget {
   final int shopId;
-  const AddProductSheet({super.key, required this.shopId});
+  /// Context of the page that opened this sheet (e.g. ProductsPage). Used to show
+  /// SnackBar after closing the sheet so it appears above the content, not behind it.
+  final BuildContext? scaffoldContext;
+
+  const AddProductSheet({
+    super.key,
+    required this.shopId,
+    this.scaffoldContext,
+  });
 
   @override
   State<AddProductSheet> createState() => _AddProductSheetState();
@@ -14,6 +24,8 @@ class AddProductSheet extends StatefulWidget {
 
 class _AddProductSheetState extends State<AddProductSheet> {
   File? _imageFile;
+  bool _isSubmitting = false;
+  String? _validationError;
   final ImagePicker _picker = ImagePicker();
   String _selectedCategory = 'Electronics';
 
@@ -29,6 +41,58 @@ class _AddProductSheetState extends State<AddProductSheet> {
     _stockController.dispose();
     _descController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submitProduct() async {
+    if (_nameController.text.trim().isEmpty ||
+        _priceController.text.trim().isEmpty ||
+        _imageFile == null) {
+      setState(() {
+        _validationError = _imageFile == null
+            ? "Please select a product image"
+            : "Please fill name and price";
+      });
+      return;
+    }
+    setState(() {
+      _validationError = null;
+      _isSubmitting = true;
+    });
+    try {
+      final api = getIt<ApiService>();
+      final uploadedPath = await api.uploadImage(_imageFile!);
+      if (!mounted) return;
+      final productData = <String, dynamic>{
+        "name": _nameController.text.trim(),
+        "price": double.tryParse(_priceController.text) ?? 0.0,
+        "description": _descController.text.trim().isEmpty
+            ? "No description provided"
+            : _descController.text.trim(),
+        "stock_quantity": int.tryParse(_stockController.text) ?? 0,
+        "image_urls": [uploadedPath],
+      };
+      await context.read<ProductCubit>().addProduct(widget.shopId, productData);
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      final message = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '').trim();
+      final scaffoldContext = widget.scaffoldContext;
+      Navigator.pop(context);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (scaffoldContext != null && scaffoldContext.mounted) {
+          ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+            SnackBar(
+              content: Text(message.isNotEmpty ? message : "Failed to add product"),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -165,6 +229,19 @@ class _AddProductSheetState extends State<AddProductSheet> {
                 }).toList(),
               ),
             ),
+            if (_validationError != null) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  _validationError!,
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 35),
             SizedBox(
               width: double.infinity,
@@ -175,37 +252,20 @@ class _AddProductSheetState extends State<AddProductSheet> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 2,
                 ),
-                onPressed: () {
-                  if (_nameController.text.isNotEmpty && 
-                      _priceController.text.isNotEmpty && 
-                      _imageFile != null) {
-                    
-                    final Map<String, dynamic> productData = {
-                      "name": _nameController.text,
-                      "price": double.tryParse(_priceController.text) ?? 0.0,
-                      "description": _descController.text.trim().isEmpty 
-                          ? "No description provided" 
-                          : _descController.text,
-                      "imageUrl": _imageFile!.path,
-                      "stockQuantity": int.tryParse(_stockController.text) ?? 0,
-                      "category": _selectedCategory,
-                    };
-
-                    context.read<ProductCubit>().addProduct(widget.shopId, productData);
-                    Navigator.pop(context);
-                  } else {
-                    String error = "Please fill name, price and add a photo";
-                    if (_imageFile == null) error = "Please select a product image";
-                    
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(error), backgroundColor: Colors.redAccent),
-                    );
-                  }
-                },
-                child: const Text(
-                  "List Product Now",
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                onPressed: _isSubmitting ? null : () => _submitProduct(),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        "List Product Now",
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
           ],
