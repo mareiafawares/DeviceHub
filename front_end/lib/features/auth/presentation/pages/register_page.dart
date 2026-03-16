@@ -3,25 +3,27 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:front_end/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:front_end/features/auth/presentation/cubit/auth_state.dart';
-import 'package:front_end/features/auth/presentation/pages/admin_home_page.dart';
 import 'package:front_end/features/auth/presentation/pages/seller_home.dart';
 import 'package:front_end/features/auth/presentation/pages/customer_home.dart';
-import 'package:front_end/features/auth/presentation/pages/register_page.dart';
+import 'package:front_end/features/auth/presentation/pages/login_page.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  String _role = 'customer';
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -29,13 +31,11 @@ class _LoginPageState extends State<LoginPage> {
 
   void _onAuthSuccess(BuildContext context, AuthSuccess state) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Login successful'), backgroundColor: Colors.green),
+      const SnackBar(content: Text('Account created successfully'), backgroundColor: Colors.green),
     );
     if (!context.mounted) return;
     final role = (state.userRole ?? state.user.role).toString().toLowerCase();
-    if (role == 'admin') {
-      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const AdminHomePage()), (_) => false);
-    } else if (role == 'seller') {
+    if (role == 'seller') {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const SellerHomePage()), (_) => false);
     } else {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const CustomerHomePage()), (_) => false);
@@ -45,6 +45,12 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Register'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: const Color(0xFF1A237E),
+      ),
       body: SafeArea(
         child: BlocConsumer<AuthCubit, AuthState>(
           listener: (context, state) {
@@ -64,19 +70,28 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 16),
                     Text(
-                      'DeviceHub',
-                      style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.bold, color: const Color(0xFF1A237E)),
-                      textAlign: TextAlign.center,
+                      'Create account',
+                      style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF1A237E)),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Sign in to your account',
+                      'Username, email, password and role',
                       style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade600),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Username',
+                        hintText: 'johndoe',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter username' : null,
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -100,7 +115,30 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       validator: (v) => (v == null || v.isEmpty) ? 'Enter password' : null,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 20),
+                    Text('Role', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Customer'),
+                            value: 'customer',
+                            groupValue: _role,
+                            onChanged: (v) => setState(() => _role = v!),
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Seller'),
+                            value: 'seller',
+                            groupValue: _role,
+                            onChanged: (v) => setState(() => _role = v!),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                     SizedBox(
                       height: 52,
                       child: ElevatedButton(
@@ -108,9 +146,11 @@ class _LoginPageState extends State<LoginPage> {
                             ? null
                             : () {
                                 if (_formKey.currentState?.validate() ?? false) {
-                                  context.read<AuthCubit>().login(
-                                        _emailController.text.trim(),
-                                        _passwordController.text,
+                                  context.read<AuthCubit>().signUp(
+                                        username: _usernameController.text.trim(),
+                                        email: _emailController.text.trim(),
+                                        password: _passwordController.text,
+                                        role: _role,
                                       );
                                 }
                               },
@@ -120,17 +160,17 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         child: isLoading
                             ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text('Login', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                            : const Text('Register', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
                       ),
                     ),
                     const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Don\'t have an account? ', style: GoogleFonts.poppins(color: Colors.grey.shade700)),
+                        Text('Already have an account? ', style: GoogleFonts.poppins(color: Colors.grey.shade700)),
                         TextButton(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterPage())),
-                          child: Text('Register', style: GoogleFonts.poppins(color: const Color(0xFF1A237E), fontWeight: FontWeight.w600)),
+                          onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage())),
+                          child: Text('Login', style: GoogleFonts.poppins(color: const Color(0xFF1A237E), fontWeight: FontWeight.w600)),
                         ),
                       ],
                     ),

@@ -1,43 +1,60 @@
 import '../../data/models/user_model.dart';
 
-abstract class AuthState {}
+/// Base type for all auth-related states.
+sealed class AuthState {
+  const AuthState();
+}
 
-class AuthInitial extends AuthState {}
-class AuthLoading extends AuthState {}
+/// No user session (initial or after logout).
+final class AuthInitial extends AuthState {
+  const AuthInitial();
+}
 
-class AuthSuccess extends AuthState {
-  final String token;
-  final UserModel user; 
-  final String? userRole;
-  final int? userId;
+/// Auth operation in progress (login, register, restore, refresh).
+final class AuthLoading extends AuthState {
+  const AuthLoading();
+}
 
-  AuthSuccess(
-    this.token, {
-    required this.user, 
+/// User is authenticated. [user] from API; [token] kept for refresh/me.
+final class AuthSuccess extends AuthState {
+  const AuthSuccess({
+    required this.token,
+    required this.user,
     this.userRole,
     this.userId,
   });
+
+  final String token;
+  final UserModel user;
+  final String? userRole;
+  final int? userId;
 }
 
-class AuthRegistrationSuccess extends AuthState {}
-class ShopRequestSuccess extends AuthState {} 
+/// Auth operation failed (login, register, or API error).
+final class AuthError extends AuthState {
+  const AuthError(this.message);
+  final String message;
+}
 
-class PendingShopsLoaded extends AuthState {
+/// Shop request submitted; seller flow then refreshes user.
+final class ShopRequestSuccess extends AuthState {
+  const ShopRequestSuccess();
+}
+
+/// Admin: list of pending shop requests loaded.
+final class PendingShopsLoaded extends AuthState {
+  const PendingShopsLoaded(this.shops);
   final List<Map<String, dynamic>> shops;
-  PendingShopsLoaded(this.shops);
 }
 
-class UsersLoaded extends AuthState {
+/// Admin: list of all users loaded.
+final class UsersLoaded extends AuthState {
+  const UsersLoaded(this.users);
   final List<Map<String, dynamic>> users;
-  UsersLoaded(this.users);
 }
 
-class ShopApprovalSuccess extends AuthState {
+/// Admin: shop approved or rejected.
+final class ShopApprovalSuccess extends AuthState {
+  const ShopApprovalSuccess(this.message);
   final String message;
-  ShopApprovalSuccess(this.message);
-}
-
-class AuthError extends AuthState {
-  final String message;
-  AuthError(this.message);
 }

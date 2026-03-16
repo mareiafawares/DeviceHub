@@ -61,6 +61,39 @@ class ProductCubit extends Cubit<ProductState> {
       await fetchProducts(shopId);
     } catch (e) {
       emit(ProductError("Add failed: ${e.toString()}"));
+      rethrow;
+    }
+  }
+
+  Future<void> addProductImages(int productId, int shopId, List<String> urls) async {
+    if (urls.isEmpty) return;
+    try {
+      await authRepository.addProductImages(productId, urls);
+      emit(ProductActionSuccess("Image(s) added."));
+      await fetchProducts(shopId);
+    } catch (e) {
+      emit(ProductError("Failed to add images: ${e.toString()}"));
+    }
+  }
+
+  Future<void> deleteProductImage(int productId, int imageId, int shopId) async {
+    try {
+      await authRepository.deleteProductImage(productId, imageId);
+      emit(ProductActionSuccess("Image removed."));
+      await fetchProducts(shopId);
+    } catch (e) {
+      emit(ProductError("Failed to remove image: ${e.toString()}"));
+    }
+  }
+
+  Future<void> updateProduct(int productId, int shopId, Map<String, dynamic> productData) async {
+    try {
+      await authRepository.updateProduct(productId, productData);
+      emit(ProductActionSuccess("Product updated."));
+      await fetchProducts(shopId);
+    } catch (e) {
+      emit(ProductError("Update failed: ${e.toString()}"));
+      rethrow;
     }
   }
 

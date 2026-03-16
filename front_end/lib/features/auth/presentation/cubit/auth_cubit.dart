@@ -1,48 +1,70 @@
 import 'dart:io';
-import "package:flutter_bloc/flutter_bloc.dart";
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/auth/token_storage.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../data/models/user_model.dart';
 import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
-  final AuthRepository authRepository;
+  AuthCubit(this._repo, this._storage) : super(const AuthInitial());
 
-  AuthCubit(this.authRepository) : super(AuthInitial());
+  final AuthRepository _repo;
+  final TokenStorage _storage;
+
+  static String _err(Object e) =>
+      e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '').trim();
+
+  /// Restore session on app start: load token from storage, then GET /auth/me.
+  Future<void> restoreSession() async {
+    emit(const AuthLoading());
+    final token = await _storage.getToken();
+    if (token == null || token.isEmpty) {
+      emit(const AuthInitial());
+      return;
+    }
+    try {
+      final data = await _repo.getMe();
+      final user = UserModel.fromJson(data);
+      emit(AuthSuccess(
+        token: token,
+        user: user,
+        userRole: user.role.toLowerCase(),
+        userId: user.id,
+      ));
+    } catch (_) {
+      await _storage.clear();
+      emit(const AuthInitial());
+    }
+  }
+
+  static const Duration _loginTimeout = Duration(seconds: 20);
 
   Future<void> login(String email, String password) async {
     if (email.isEmpty || password.isEmpty) {
-      emit(AuthError("Please enter all required fields"));
+      emit(AuthError('Please enter email and password'));
       return;
     }
-    emit(AuthLoading());
+    emit(const AuthLoading());
     try {
-      final Map<String, dynamic> result = await authRepository.login(email, password);
-      final user = UserModel.fromJson(result);
+      final result = await _repo.login(email, password).timeout(
+        _loginTimeout,
+        onTimeout: () => throw Exception('Login timed out'),
+      );
+      final token = result['access_token'] as String? ?? result['accessToken'] as String? ?? '';
+      if (token.isEmpty) throw Exception('No token in response');
+      final me = await _repo.getMe(token: token).timeout(
+        _loginTimeout,
+        onTimeout: () => throw Exception('Request timed out'),
+      );
+      final user = UserModel.fromJson(me);
       emit(AuthSuccess(
-        result['access_token'] ?? '',
+        token: token,
         user: user,
         userRole: user.role.toLowerCase(),
         userId: user.id,
       ));
     } catch (e) {
-      emit(AuthError("Login failed: ${e.toString()}"));
-    }
-  }
-
-  Future<void> refreshUserData(int userId) async {
-    try {
-      final users = await authRepository.getAllUsers();
-      final currentUserData = users.firstWhere((u) => u['id'] == userId);
-      final updatedUser = UserModel.fromJson(currentUserData);
-
-      emit(AuthSuccess(
-        "session_token",
-        user: updatedUser,
-        userRole: updatedUser.role.toLowerCase(),
-        userId: updatedUser.id,
-      ));
-    } catch (e) {
-      print("Error refreshing data: $e");
+      emit(AuthError(_err(e).isNotEmpty ? _err(e) : 'Login failed'));
     }
   }
 
@@ -52,91 +74,147 @@ class AuthCubit extends Cubit<AuthState> {
     required String password,
     required String role,
   }) async {
-    emit(AuthLoading());
+    final u = username.trim();
+    final e = email.trim();
+    if (u.isEmpty || e.isEmpty || password.isEmpty) {
+      emit(AuthError('Please enter username, email and password'));
+      return;
+    }
+    emit(const AuthLoading());
     try {
-      await authRepository.signUp(
-        username: username,
-        email: email,
-        password: password,
-        role: role,
+      final result = await _repo.signUp(username: u, email: e, password: password, role: role).timeout(
+        _loginTimeout,
+        onTimeout: () => throw Exception('Registration timed out'),
       );
-      emit(AuthRegistrationSuccess());
+      final token = result['access_token'] as String? ?? result['accessToken'] as String? ?? '';
+      if (token.isEmpty) throw Exception('No token in response');
+      final me = await _repo.getMe(token: token).timeout(
+        _loginTimeout,
+        onTimeout: () => throw Exception('Request timed out'),
+      );
+      final user = UserModel.fromJson(me);
+      emit(AuthSuccess(
+        token: token,
+        user: user,
+        userRole: user.role.toLowerCase(),
+        userId: user.id,
+      ));
     } catch (e) {
-      emit(AuthError("Registration failed: ${e.toString()}"));
+      emit(AuthError(_err(e).isNotEmpty ? _err(e) : 'Registration failed'));
     }
   }
 
-  Future<void> submitShopRequest({
-    required int userId,
+  Future<void> logout() async {
+    await _repo.clearSession();
+    emit(const AuthInitial());
+  }
+
+  /// Refresh current user from GET /auth/me (token from state or storage).
+  /// Safe to call repeatedly; only one request in flight at a time.
+  Future<void> refreshFromMe() async {
+    final t = state is AuthSuccess ? (state as AuthSuccess).token : null;
+    final token = t ?? await _storage.getToken() ?? '';
+    if (token.isEmpty) return;
+    try {
+      final data = await _repo.getMe();
+      final user = UserModel.fromJson(data);
+      if (!isClosed) {
+        emit(AuthSuccess(
+          token: token,
+          user: user,
+          userRole: user.role.toLowerCase(),
+          userId: user.id,
+        ));
+      }
+    } catch (_) {
+      if (state is AuthSuccess) rethrow;
+    }
+  }
+
+  /// Admin: refresh user from getAllUsers (legacy).
+  Future<void> refreshUserData(int userId) async {
+    try {
+      final users = await _repo.getAllUsers();
+      final raw = users.firstWhere((u) => u['id'] == userId);
+      final user = UserModel.fromJson(raw);
+      final token = await _storage.getToken() ?? '';
+      emit(AuthSuccess(
+        token: token,
+        user: user,
+        userRole: user.role.toLowerCase(),
+        userId: user.id,
+      ));
+    } catch (_) {}
+  }
+
+  /// Submits shop request then refreshes user. Does not emit [AuthLoading] or [ShopRequestSuccess]
+  /// so [AuthGate] keeps showing the seller home. Returns true on success, false on error.
+  Future<bool> submitShopRequest({
     required String shopName,
-    required String shopDescription, 
+    required String shopDescription,
     File? imageFile,
   }) async {
-    emit(AuthLoading());
     try {
-      await authRepository.createShopRequest(
-        userId: userId,
+      await _repo.createShopRequest(
         shopName: shopName,
         shopDescription: shopDescription,
         imageFile: imageFile,
       );
-      emit(ShopRequestSuccess());
-      await refreshUserData(userId);
+      await refreshFromMe();
+      return true;
     } catch (e) {
-      emit(AuthError("Failed to submit: ${e.toString()}"));
+      emit(AuthError('Failed to submit: ${_err(e)}'));
+      return false;
     }
   }
 
   Future<void> deleteShop(int shopId) async {
-    emit(AuthLoading());
+    emit(const AuthLoading());
     try {
-      await authRepository.deleteUser(shopId);
-      if (state is AuthSuccess) {
-        final currentUserId = (state as AuthSuccess).userId;
-        await refreshUserData(currentUserId!);
-      }
+      await _repo.deleteUser(shopId);
+      await refreshFromMe();
     } catch (e) {
-      emit(AuthError("Failed to delete shop: ${e.toString()}"));
+      emit(AuthError('Failed to delete shop: ${_err(e)}'));
     }
   }
 
   Future<void> fetchPendingShops() async {
-    emit(AuthLoading());
+    emit(const AuthLoading());
     try {
-      final shops = await authRepository.getPendingShopRequests();
+      final shops = await _repo.getPendingShopRequests();
       emit(PendingShopsLoaded(shops));
     } catch (e) {
-      emit(AuthError("Failed to load requests"));
+      emit(AuthError('Failed to load requests: ${_err(e)}'));
     }
   }
 
   Future<void> approveOrRejectShop({required int userId, required bool approve}) async {
-    emit(AuthLoading());
+    emit(const AuthLoading());
     try {
-      await authRepository.updateShopStatus(userId: userId, approve: approve);
+      await _repo.updateShopStatus(userId: userId, approve: approve);
       await fetchPendingShops();
-      emit(ShopApprovalSuccess(approve ? "Shop approved!" : "Shop rejected."));
+      emit(ShopApprovalSuccess(approve ? 'Shop approved!' : 'Shop rejected.'));
     } catch (e) {
-      emit(AuthError("Action failed: ${e.toString()}"));
+      emit(AuthError('Action failed: ${_err(e)}'));
     }
   }
 
   Future<void> fetchAllUsers() async {
-    emit(AuthLoading());
+    emit(const AuthLoading());
     try {
-      final users = await authRepository.getAllUsers();
+      final users = await _repo.getAllUsers();
       emit(UsersLoaded(users));
     } catch (e) {
-      emit(AuthError("Error fetching users"));
+      emit(AuthError('Error fetching users: ${_err(e)}'));
     }
   }
 
   Future<void> deleteUser(int userId) async {
     try {
-      await authRepository.deleteUser(userId);
+      await _repo.deleteUser(userId);
       await fetchAllUsers();
     } catch (e) {
-      emit(AuthError("Failed to delete user"));
+      emit(AuthError('Failed to delete user: ${_err(e)}'));
     }
   }
 }

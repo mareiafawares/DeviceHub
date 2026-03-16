@@ -59,7 +59,10 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ProductDetailsPage(product: product),
+                        builder: (context) => ProductDetailsPage(
+                          productId: product.id,
+                          initialProduct: product,
+                        ),
                       ),
                     );
                   },
