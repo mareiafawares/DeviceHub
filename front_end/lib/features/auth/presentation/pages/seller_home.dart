@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:front_end/features/auth/presentation/cubit/product_cubit.dart';
@@ -24,9 +25,11 @@ class _SellerHomePageState extends State<SellerHomePage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthCubit>().refreshUserData(widget.userId);
-    });
+    _refreshData();
+  }
+
+  void _refreshData() {
+    context.read<AuthCubit>().refreshUserData(widget.userId);
   }
 
   @override
@@ -43,6 +46,12 @@ class _SellerHomePageState extends State<SellerHomePage> {
         ),
         backgroundColor: const Color(0xFF1A237E),
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            onPressed: _refreshData,
+            icon: const Icon(Icons.refresh),
+          )
+        ],
       ),
       body: BlocBuilder<AuthCubit, AuthState>(
         builder: (context, state) {
@@ -54,7 +63,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => context.read<AuthCubit>().refreshUserData(widget.userId),
+            onRefresh: () async => _refreshData(),
             child: ListView(
               padding: const EdgeInsets.all(20.0),
               children: [
@@ -179,7 +188,9 @@ class _SellerHomePageState extends State<SellerHomePage> {
                     radius: 35,
                     backgroundColor: Colors.grey[200],
                     backgroundImage: (shop.imageUrl != null && shop.imageUrl!.isNotEmpty)
-                        ? NetworkImage(shop.imageUrl!)
+                        ? (shop.imageUrl!.startsWith('http') 
+                            ? NetworkImage(shop.imageUrl!) as ImageProvider
+                            : FileImage(File(shop.imageUrl!)))
                         : null,
                     child: (shop.imageUrl == null || shop.imageUrl!.isEmpty)
                         ? Text(
@@ -214,7 +225,9 @@ class _SellerHomePageState extends State<SellerHomePage> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  shop.description ?? "No description available for this store.",
+                  shop.description ?? "No description available.",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
                 const Padding(
@@ -231,7 +244,12 @@ class _SellerHomePageState extends State<SellerHomePage> {
                             MaterialPageRoute(
                               builder: (context) => BlocProvider.value(
                                 value: context.read<ProductCubit>(),
-                                child: ProductsPage(shopId: shop.id),
+                                child: ProductsPage(
+                                  shopId: shop.id,
+                                  shopName: shop.name,
+                                  shopDescription: shop.description ?? "Welcome to our store",
+                                  shopImageUrl: shop.imageUrl,
+                                ),
                               ),
                             ),
                           );
@@ -316,13 +334,16 @@ class _SellerHomePageState extends State<SellerHomePage> {
 
   Widget _buildAddShopButton() {
     return OutlinedButton.icon(
-      onPressed: () => showDialog(
-        context: context,
-        builder: (_) => CreateShopDialog(
-          userId: widget.userId,
-          ownerName: widget.username,
-        ),
-      ),
+      onPressed: () async {
+        await showDialog(
+          context: context,
+          builder: (_) => CreateShopDialog(
+            userId: widget.userId,
+            ownerName: widget.username,
+          ),
+        );
+        _refreshData();
+      },
       icon: const Icon(Icons.add_business_rounded),
       label: const Text("Register New Store"),
       style: OutlinedButton.styleFrom(

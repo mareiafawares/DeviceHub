@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../core/api_service.dart';
 import '../models/order_model.dart';
+import '../models/product_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final ApiService apiService;
@@ -21,19 +22,20 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> signUp({
+  Future<Map<String, dynamic>> signUp({
     required String username,
     required String email,
     required String password,
     required String role,
   }) async {
     try {
-      await apiService.post('users/', data: {
+      final response = await apiService.post('users/register', data: {
         'username': username,
         'email': email,
         'password': password,
         'role': role,
       });
+      return response.data; 
     } on DioException catch (e) {
       throw Exception(e.response?.data['detail'] ?? "Registration failed");
     }
@@ -48,8 +50,8 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       Map<String, dynamic> dataMap = {
-        'shop_name': shopName,
-        'shop_description': shopDescription,
+        'shopName': shopName, 
+        'shopDescription': shopDescription,
       };
 
       if (imageFile != null) {
@@ -113,10 +115,22 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getShopProducts(int shopId) async {
+  Future<List<ProductModel>> getAllProducts() async {
+    try {
+      final response = await apiService.get('products/all');
+      final List data = response.data;
+      return data.map((json) => ProductModel.fromJson(json)).toList();
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['detail'] ?? "Failed to load products");
+    }
+  }
+
+  @override
+  Future<List<ProductModel>> getShopProducts(int shopId) async {
     try {
       final response = await apiService.get('products/shop/$shopId');
-      return List<Map<String, dynamic>>.from(response.data);
+      final List data = response.data;
+      return data.map((json) => ProductModel.fromJson(json)).toList();
     } on DioException catch (e) {
       throw Exception(e.response?.data['detail'] ?? "Failed to fetch products");
     }

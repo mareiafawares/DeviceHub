@@ -64,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
               } else {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const CustomerHome()),
+                  MaterialPageRoute(builder: (context) => const CustomerHomePage()),
                 );
               }
             } else if (state is AuthError) {

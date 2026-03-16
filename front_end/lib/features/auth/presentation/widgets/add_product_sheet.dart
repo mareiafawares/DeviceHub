@@ -105,11 +105,18 @@ class _AddProductSheetState extends State<AddProductSheet> {
               icon: Icons.shopping_bag_outlined,
               controller: _nameController,
             ),
+            _buildModernField(
+              label: "Description",
+              hint: "Describe your product...",
+              icon: Icons.description_outlined,
+              controller: _descController,
+              maxLines: 3,
+            ),
             Row(
               children: [
                 Expanded(
                   child: _buildModernField(
-                    label: "Price",
+                    label: "Price (\$)",
                     hint: "0.00",
                     icon: Icons.sell_outlined,
                     isNumber: true,
@@ -119,7 +126,7 @@ class _AddProductSheetState extends State<AddProductSheet> {
                 const SizedBox(width: 15),
                 Expanded(
                   child: _buildModernField(
-                    label: "Stock",
+                    label: "Stock Quantity",
                     hint: "Qty",
                     icon: Icons.inventory_2_outlined,
                     isNumber: true,
@@ -134,7 +141,7 @@ class _AddProductSheetState extends State<AddProductSheet> {
               height: 45,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                children: ['Electronics', 'Accessories', 'Laptops', 'Cameras'].map((cat) {
+                children: ['Electronics', 'Accessories', 'Laptops', 'Cameras', 'Tablets'].map((cat) {
                   bool isSelected = _selectedCategory == cat;
                   return GestureDetector(
                     onTap: () => setState(() => _selectedCategory = cat),
@@ -148,7 +155,10 @@ class _AddProductSheetState extends State<AddProductSheet> {
                       alignment: Alignment.center,
                       child: Text(
                         cat,
-                        style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black87, 
+                          fontWeight: FontWeight.w600
+                        ),
                       ),
                     ),
                   );
@@ -163,22 +173,32 @@ class _AddProductSheetState extends State<AddProductSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2D43A6),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 2,
                 ),
                 onPressed: () {
-                  if (_nameController.text.isNotEmpty && _priceController.text.isNotEmpty) {
+                  if (_nameController.text.isNotEmpty && 
+                      _priceController.text.isNotEmpty && 
+                      _imageFile != null) {
+                    
                     final Map<String, dynamic> productData = {
                       "name": _nameController.text,
                       "price": double.tryParse(_priceController.text) ?? 0.0,
-                      "description": _descController.text.isEmpty ? "No description" : _descController.text,
-                      "imageUrl": _imageFile?.path ?? "https://via.placeholder.com/150",
+                      "description": _descController.text.trim().isEmpty 
+                          ? "No description provided" 
+                          : _descController.text,
+                      "imageUrl": _imageFile!.path,
                       "stockQuantity": int.tryParse(_stockController.text) ?? 0,
+                      "category": _selectedCategory,
                     };
 
                     context.read<ProductCubit>().addProduct(widget.shopId, productData);
                     Navigator.pop(context);
                   } else {
+                    String error = "Please fill name, price and add a photo";
+                    if (_imageFile == null) error = "Please select a product image";
+                    
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please enter Name and Price")),
+                      SnackBar(content: Text(error), backgroundColor: Colors.redAccent),
                     );
                   }
                 },
@@ -200,6 +220,7 @@ class _AddProductSheetState extends State<AddProductSheet> {
     required IconData icon,
     bool isNumber = false,
     required TextEditingController controller,
+    int maxLines = 1,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,13 +229,14 @@ class _AddProductSheetState extends State<AddProductSheet> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
+          maxLines: maxLines,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(icon, color: Colors.grey, size: 20),
             filled: true,
             fillColor: const Color(0xFFF8F9FB),
-            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(15),

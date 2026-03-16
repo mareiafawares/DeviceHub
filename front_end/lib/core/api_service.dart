@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 
 class ApiService {
   final Dio _dio;
-  final String _baseUrl = 'http://192.168.1.7:8000/';
+  final String _baseUrl = 'http://192.168.1.5:8000/';
 
   ApiService(this._dio) {
     _dio.options.baseUrl = _baseUrl;
@@ -35,53 +35,60 @@ class ApiService {
     }
   }
 
-  Future<Response> createShopRequest({
-    required int userId,
-    required String shopName,
-    required String shopDescription,
-    File? imageFile,
+  Future<Response> addProduct({
+    required int shopId,
+    required String name,
+    required double price,
+    required String description,
+    required int stockQuantity,
+    required File imageFile,
   }) async {
     try {
-      Map<String, dynamic> data = {
-        "shopName": shopName,
-        "shopDescription": shopDescription,
-      };
-
-      if (imageFile != null) {
-        String fileName = imageFile.path.split('/').last;
-        data["image"] = await MultipartFile.fromFile(
+      String fileName = imageFile.path.split('/').last;
+      FormData formData = FormData.fromMap({
+        "name": name,
+        "price": price,
+        "description": description,
+        "stockQuantity": stockQuantity,
+        "image": await MultipartFile.fromFile(
           imageFile.path,
           filename: fileName,
-        );
-      }
-
-      FormData formData = FormData.fromMap(data);
+        ),
+      });
 
       return await _dio.post(
-        'users/create-shop/$userId',
+        'products/add/$shopId',
         data: formData,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
+        options: Options(contentType: 'multipart/form-data'),
       );
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<Response> post(String path, {dynamic data, Options? options}) async {
-    return await _dio.post(path, data: data, options: options);
+  Future<Response> post(
+    String path, {
+    dynamic data, 
+    Options? options,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    return await _dio.post(
+      path, 
+      data: data, 
+      options: options,
+      queryParameters: queryParameters,
+    );
   }
 
   Future<Response> put(
     String path, {
-    dynamic data,
+    dynamic data, 
     Options? options,
     Map<String, dynamic>? queryParameters,
   }) async {
     return await _dio.put(
-      path,
-      data: data,
+      path, 
+      data: data, 
       options: options,
       queryParameters: queryParameters,
     );
@@ -89,7 +96,7 @@ class ApiService {
 
   Future<Response> get(
     String path, {
-    Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? queryParameters, 
     Options? options,
   }) async {
     return await _dio.get(path, queryParameters: queryParameters, options: options);

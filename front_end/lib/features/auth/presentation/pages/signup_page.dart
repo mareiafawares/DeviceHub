@@ -66,7 +66,7 @@ class _SignupPageState extends State<SignupPage> {
               } else {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const CustomerHome()),
+                  MaterialPageRoute(builder: (context) => const CustomerHomePage()),
                   (route) => false,
                 );
               }

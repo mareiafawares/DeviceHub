@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dartz/dartz.dart';
 import '../../data/models/order_model.dart';
+import '../../data/models/product_model.dart';
 
 abstract class AuthRepository {
   Future<Map<String, dynamic>> login(String email, String password);
@@ -30,7 +31,9 @@ abstract class AuthRepository {
 
   Future<void> deleteUser(int userId);
 
-  Future<List<Map<String, dynamic>>> getShopProducts(int shopId);
+  Future<List<ProductModel>> getAllProducts();
+
+  Future<List<ProductModel>> getShopProducts(int shopId);
 
   Future<void> addProduct(int shopId, Map<String, dynamic> productData);
 

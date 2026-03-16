@@ -5,28 +5,32 @@ import 'product_state.dart';
 
 class ProductCubit extends Cubit<ProductState> {
   final AuthRepository authRepository;
+  
   List<ProductModel> _allProducts = []; 
 
-  
   List<ProductModel> get allProducts => _allProducts;
 
   ProductCubit(this.authRepository) : super(ProductInitial());
 
+  Future<void> fetchAllProducts() async {
+    emit(ProductLoading());
+    try {
+      final List<ProductModel> products = await authRepository.getAllProducts();
+      _allProducts = products;
+      emit(ProductLoaded(_allProducts));
+    } catch (e) {
+      emit(ProductError("Failed to load products: ${e.toString()}"));
+    }
+  }
+
   Future<void> fetchProducts(int shopId) async {
     emit(ProductLoading());
     try {
-      final dynamic data = await authRepository.getShopProducts(shopId);
-      
-      if (data != null && data is List) {
-        _allProducts = data.map((json) => ProductModel.fromJson(json)).toList();
-        emit(ProductLoaded(_allProducts));
-      } else {
-        _allProducts = [];
-        emit(ProductLoaded([]));
-      }
+      final List<ProductModel> products = await authRepository.getShopProducts(shopId);
+      _allProducts = products;
+      emit(ProductLoaded(_allProducts));
     } catch (e) {
-      print("Error fetching products: $e");
-      emit(ProductError("Failed to load products: ${e.toString()}"));
+      emit(ProductError("Failed to load shop products: ${e.toString()}"));
     }
   }
 
@@ -53,11 +57,7 @@ class ProductCubit extends Cubit<ProductState> {
   Future<void> addProduct(int shopId, Map<String, dynamic> productData) async {
     try {
       await authRepository.addProduct(shopId, productData);
-      
-      
       emit(ProductActionSuccess("Product added successfully!"));
-      
-     
       await fetchProducts(shopId);
     } catch (e) {
       emit(ProductError("Add failed: ${e.toString()}"));
@@ -67,14 +67,8 @@ class ProductCubit extends Cubit<ProductState> {
   Future<void> deleteProduct(int productId, int shopId) async {
     try {
       await authRepository.deleteProduct(productId);
-      
-      
       _allProducts.removeWhere((p) => p.id == productId);
-      
-      
       emit(ProductActionSuccess("Product deleted successfully!"));
-      
-      
       emit(ProductLoaded(List.from(_allProducts)));
     } catch (e) {
       emit(ProductError("Delete failed: ${e.toString()}"));

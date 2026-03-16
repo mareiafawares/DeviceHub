@@ -1,14 +1,24 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/product_cubit.dart';
 import '../cubit/product_state.dart';
 import '../../data/models/product_model.dart';
 import '../widgets/add_product_sheet.dart';
-import 'dart:io';
 
 class ProductsPage extends StatefulWidget {
   final int shopId;
-  const ProductsPage({super.key, required this.shopId});
+  final String shopName;
+  final String shopDescription;
+  final String? shopImageUrl;
+
+  const ProductsPage({
+    super.key,
+    required this.shopId,
+    required this.shopName,
+    required this.shopDescription,
+    this.shopImageUrl,
+  });
 
   @override
   State<ProductsPage> createState() => _ProductsPageState();
@@ -30,14 +40,14 @@ class _ProductsPageState extends State<ProductsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F4F9),
+      backgroundColor: const Color(0xFFF8FAFF),
       floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton.extended(
               onPressed: () => _openAddProductSheet(context),
               backgroundColor: const Color(0xFF2D43A6),
               elevation: 4,
-              icon: const Icon(Icons.add_shopping_cart, color: Colors.white),
-              label: const Text("New Product",
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text("Add Product",
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             )
           : null,
@@ -54,47 +64,105 @@ class _ProductsPageState extends State<ProductsPage> {
             context.read<ProductCubit>().fetchProducts(widget.shopId);
           }
         },
-        child: BlocBuilder<ProductCubit, ProductState>(
-          builder: (context, state) {
-            return CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                _buildModernAppBar(),
-                _buildSearchHeader(),
-                _buildBodyContent(state),
-              ],
-            );
-          },
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            _buildShopHeader(),
+            _buildSearchHeader(),
+            BlocBuilder<ProductCubit, ProductState>(
+              builder: (context, state) {
+                return _buildBodyContent(state);
+              },
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
         ),
       ),
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
-  Widget _buildModernAppBar() {
+  Widget _buildShopHeader() {
     return SliverAppBar(
-      expandedHeight: 120.0,
+      expandedHeight: 220.0,
       pinned: true,
       elevation: 0,
       backgroundColor: const Color(0xFF2D43A6),
+      iconTheme: const IconThemeData(color: Colors.white),
       flexibleSpace: FlexibleSpaceBar(
-        centerTitle: false,
-        titlePadding: const EdgeInsetsDirectional.only(start: 20, bottom: 16),
-        title: const Text(
-          "Inventory Stock",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
-        ),
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF2D43A6), Color(0xFF1A1A1A)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+        centerTitle: true,
+        title: Text(
+          widget.shopName,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.white,
+            shadows: [Shadow(blurRadius: 8, color: Colors.black45)],
           ),
+        ),
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildHeaderImage(),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.1),
+                    Colors.black.withOpacity(0.6),
+                  ],
+                ),
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 40),
+                CircleAvatar(
+                  radius: 35,
+                  backgroundColor: Colors.white24,
+                  backgroundImage: _getShopImageProvider(),
+                  child: widget.shopImageUrl == null || widget.shopImageUrl!.isEmpty
+                      ? const Icon(Icons.storefront_rounded, size: 35, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Text(
+                    widget.shopDescription,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  ImageProvider? _getShopImageProvider() {
+    if (widget.shopImageUrl == null || widget.shopImageUrl!.isEmpty) return null;
+    if (widget.shopImageUrl!.startsWith('http')) {
+      return NetworkImage(widget.shopImageUrl!);
+    } else {
+      return FileImage(File(widget.shopImageUrl!));
+    }
+  }
+
+  Widget _buildHeaderImage() {
+    if (widget.shopImageUrl != null && widget.shopImageUrl!.isNotEmpty) {
+      return widget.shopImageUrl!.startsWith('http')
+          ? Image.network(widget.shopImageUrl!, fit: BoxFit.cover)
+          : Image.file(File(widget.shopImageUrl!), fit: BoxFit.cover);
+    }
+    return Container(color: const Color(0xFF2D43A6));
   }
 
   Widget _buildSearchHeader() {
@@ -112,126 +180,113 @@ class _ProductsPageState extends State<ProductsPage> {
       );
     }
 
-    if (state is ProductError) {
+    final products = context.read<ProductCubit>().allProducts;
+
+    if (products.isEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 60, color: Colors.redAccent),
-              const SizedBox(height: 10),
-              Text(state.message, style: const TextStyle(fontWeight: FontWeight.bold)),
-              TextButton(
-                  onPressed: () => context.read<ProductCubit>().fetchProducts(widget.shopId),
-                  child: const Text("Retry")),
+              Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              const Text("Your shop is empty!", 
+                  style: TextStyle(color: Colors.grey, fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text("Start adding products to see them here", style: TextStyle(color: Colors.grey)),
             ],
           ),
         ),
       );
     }
 
-    if (state is ProductLoaded || state is ProductActionSuccess) {
-      final products = (state is ProductLoaded) ? state.products : context.read<ProductCubit>().allProducts;
-
-      if (products.isEmpty) {
-        return SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                const Text("No products found in this shop", 
-                    style: TextStyle(color: Colors.grey, fontSize: 16)),
-              ],
-            ),
-          ),
-        );
-      }
-
-      return SliverPadding(
-        padding: const EdgeInsets.all(16),
-        sliver: SliverGrid(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 0.72,
-          ),
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => _buildProductCard(products[index]),
-            childCount: products.length,
-          ),
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 0.72,
         ),
-      );
-    }
-    return const SliverToBoxAdapter(child: SizedBox());
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _buildProductCard(products[index]),
+          childCount: products.length,
+        ),
+      ),
+    );
   }
 
   Widget _buildProductCard(ProductModel product) {
+    String? imageUrl = product.images.isNotEmpty ? product.images.first.url : null;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))
+          BoxShadow(color: Colors.blueGrey.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 6))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            flex: 3,
             child: Stack(
               fit: StackFit.expand,
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: _buildProductImage(product.imageUrl),
+                  child: _buildProductImage(imageUrl),
                 ),
                 Positioned(
                   top: 8,
                   right: 8,
-                  child: InkWell(
+                  child: GestureDetector(
                     onTap: () => _confirmDelete(product),
                     child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                      child: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), shape: BoxShape.circle),
+                      child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(product.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  Text("\$${product.price.toStringAsFixed(2)}",
-                      style: const TextStyle(
-                          color: Color(0xFF2D43A6), fontWeight: FontWeight.w800, fontSize: 15)),
-                  Row(
-                    children: [
-                      Icon(Icons.circle,
-                          size: 8, color: product.stockQuantity > 0 ? Colors.green : Colors.red),
-                      const SizedBox(width: 5),
-                      Text("Qty: ${product.stockQuantity}",
-                          style: TextStyle(color: Colors.grey[600], fontSize: 11)),
-                    ],
-                  ),
-                ],
-              ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(product.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("${product.price} JD",
+                        style: const TextStyle(
+                            color: Color(0xFF2D43A6), fontWeight: FontWeight.w900, fontSize: 15)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: product.stockQuantity > 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        product.stockQuantity > 0 ? "Stock: ${product.stockQuantity}" : "Out",
+                        style: TextStyle(
+                            color: product.stockQuantity > 0 ? Colors.green : Colors.red,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -239,41 +294,44 @@ class _ProductsPageState extends State<ProductsPage> {
     );
   }
 
-  Widget _buildProductImage(String url) {
-    if (url.startsWith('http')) {
+  Widget _buildProductImage(String? url) {
+    if (url != null && url.isNotEmpty) {
       return Image.network(
         url,
-        width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(color: Colors.grey[100], child: const Icon(Icons.broken_image)),
-      );
-    } else if (url.isNotEmpty && File(url).existsSync()) {
-      return Image.file(
-        File(url),
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(color: Colors.grey[100], child: const Icon(Icons.image)),
+        errorBuilder: (_, __, ___) => _buildPlaceholder(),
       );
     }
-    return Container(color: Colors.grey[100], child: const Icon(Icons.image));
+    return _buildPlaceholder();
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      color: Colors.grey[100],
+      child: Icon(Icons.shopping_bag_outlined, color: Colors.grey[300], size: 40),
+    );
   }
 
   Widget _buildBottomNavBar() {
-    return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      onTap: (index) {
-        setState(() => _selectedIndex = index);
-        if (index == 0) Navigator.pop(context);
-      },
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFF2D43A6),
-      unselectedItemColor: Colors.grey[400],
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: "Dashboard"),
-        BottomNavigationBarItem(icon: Icon(Icons.inventory_2_rounded), label: "Products"),
-        BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: "Stats"),
-        BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: "Settings"),
-      ],
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+      ),
+      child: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF2D43A6),
+        unselectedItemColor: Colors.grey[400],
+        backgroundColor: Colors.white,
+        elevation: 0,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_customize_rounded), label: "Store"),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_rounded), label: "Inventory"),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart_rounded), label: "Stats"),
+          BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: "Settings"),
+        ],
+      ),
     );
   }
 
@@ -290,17 +348,19 @@ class _ProductsPageState extends State<ProductsPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Remove Product"),
-        content: Text("Are you sure you want to delete ${product.name}?"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Delete Product"),
+        content: Text("Are you sure you want to delete '${product.name}'?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          TextButton(
-              onPressed: () {
-                context.read<ProductCubit>().deleteProduct(product.id, widget.shopId);
-                Navigator.pop(ctx);
-              },
-              child: const Text("Delete", style: TextStyle(color: Colors.red))),
+          ElevatedButton(
+            onPressed: () {
+              context.read<ProductCubit>().deleteProduct(product.id, widget.shopId);
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text("Delete"),
+          ),
         ],
       ),
     );
@@ -311,28 +371,31 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: const Color(0xFFF1F4F9),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      alignment: Alignment.center,
-      child: TextField(
-        onChanged: (value) => context.read<ProductCubit>().searchProducts(value),
-        decoration: InputDecoration(
-          hintText: "Search products...",
-          prefixIcon: const Icon(Icons.search, color: Color(0xFF2D43A6)),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+      color: const Color(0xFFF8FAFF),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: TextField(
+          onChanged: (value) => context.read<ProductCubit>().searchProducts(value),
+          decoration: InputDecoration(
+            hintText: "Search products...",
+            hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
+            prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF2D43A6)),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          ),
         ),
       ),
     );
   }
 
-  @override
-  double get maxExtent => 80.0;
-  @override
-  double get minExtent => 80.0;
-  @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => false;
+  @override double get maxExtent => 70.0;
+  @override double get minExtent => 70.0;
+  @override bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => false;
 }
