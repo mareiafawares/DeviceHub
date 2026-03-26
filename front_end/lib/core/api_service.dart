@@ -3,8 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'auth/token_storage.dart';
 
-/// HTTP client. Auth header is added by [AuthInterceptor] from [TokenStorage].
-/// Call [saveAccessToken] after login/register; [clearAccessToken] on logout.
 class ApiService {
   ApiService(this._dio, this._storage);
 
@@ -37,8 +35,6 @@ class ApiService {
         options: Options(contentType: Headers.jsonContentType),
       );
 
-  /// GET /auth/me. Pass [token] when calling right after login/register so the
-  /// request is authenticated even if storage is not yet updated (e.g. Android).
   Future<Response> getMe({String? token}) {
     final options = (token != null && token.isNotEmpty)
         ? Options(headers: <String, dynamic>{'Authorization': 'Bearer $token'})
@@ -46,9 +42,6 @@ class ApiService {
     return _dio.get('auth/me', options: options);
   }
 
-  /// POST /upload/image – multipart file. Returns the path as returned by the API
-  /// (e.g. "/static/uploads/images/...") for use as image_url so the backend stores the path.
-  /// Max 10 MB; JPEG, PNG, GIF, WebP. Response: { "url": "/static/uploads/images/..." }.
   Future<String> uploadImage(File file) async {
     const path = 'upload/image';
     final filename = file.path.split('/').last;
@@ -84,8 +77,6 @@ class ApiService {
     }
   }
 
-  /// POST /products/add/{shop_id} — JSON body with snake_case and image_urls.
-  /// Upload images first via [uploadImage], then pass the returned paths here.
   Future<Response> addProduct({
     required int shopId,
     required String name,
@@ -108,8 +99,6 @@ class ApiService {
     );
   }
 
-  /// POST /products/{product_id}/images — add images by URLs.
-  /// Body: { "urls": ["string"] }.
   Future<Response> addProductImages(int productId, List<String> urls) {
     return _dio.post(
       'products/$productId/images',
@@ -118,18 +107,14 @@ class ApiService {
     );
   }
 
-  /// DELETE /products/{product_id}/images/{image_id}
   Future<Response> deleteProductImage(int productId, int imageId) {
     return _dio.delete('products/$productId/images/$imageId');
   }
 
-  /// GET /products/{product_id} — fetch single product details (images, reviews, etc.).
   Future<Response> getProduct(int productId) {
     return _dio.get('products/$productId');
   }
 
-  /// PATCH /products/{product_id} — partial update. Send only fields to change (snake_case).
-  /// e.g. { "name": "...", "price": 19.99 } or { "stock_quantity": 25 }
   Future<Response> updateProduct(int productId, Map<String, dynamic> body) {
     return _dio.patch(
       'products/$productId',

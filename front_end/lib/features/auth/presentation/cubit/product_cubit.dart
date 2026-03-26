@@ -23,16 +23,16 @@ class ProductCubit extends Cubit<ProductState> {
     }
   }
 
-  Future<void> fetchProducts(int shopId) async {
-    emit(ProductLoading());
-    try {
-      final List<ProductModel> products = await authRepository.getShopProducts(shopId);
-      _allProducts = products;
-      emit(ProductLoaded(_allProducts));
-    } catch (e) {
-      emit(ProductError("Failed to load shop products: ${e.toString()}"));
-    }
+ Future<void> fetchProductsByShop(int shopId) async {
+  emit(ProductLoading());
+  try {
+    final List<ProductModel> products = await authRepository.getShopProducts(shopId);
+    _allProducts = products;
+    emit(ProductLoaded(List.from(_allProducts)));
+  } catch (e) {
+    emit(ProductError("Failed to load shop products: ${e.toString()}"));
   }
+}
 
   void searchProducts(String query) {
     if (query.isEmpty) {
@@ -58,7 +58,7 @@ class ProductCubit extends Cubit<ProductState> {
     try {
       await authRepository.addProduct(shopId, productData);
       emit(ProductActionSuccess("Product added successfully!"));
-      await fetchProducts(shopId);
+      await fetchProductsByShop(shopId);
     } catch (e) {
       emit(ProductError("Add failed: ${e.toString()}"));
       rethrow;
@@ -70,7 +70,7 @@ class ProductCubit extends Cubit<ProductState> {
     try {
       await authRepository.addProductImages(productId, urls);
       emit(ProductActionSuccess("Image(s) added."));
-      await fetchProducts(shopId);
+      await fetchProductsByShop(shopId);
     } catch (e) {
       emit(ProductError("Failed to add images: ${e.toString()}"));
     }
@@ -80,7 +80,7 @@ class ProductCubit extends Cubit<ProductState> {
     try {
       await authRepository.deleteProductImage(productId, imageId);
       emit(ProductActionSuccess("Image removed."));
-      await fetchProducts(shopId);
+      await fetchProductsByShop(shopId);
     } catch (e) {
       emit(ProductError("Failed to remove image: ${e.toString()}"));
     }
@@ -90,7 +90,7 @@ class ProductCubit extends Cubit<ProductState> {
     try {
       await authRepository.updateProduct(productId, productData);
       emit(ProductActionSuccess("Product updated."));
-      await fetchProducts(shopId);
+      await fetchProductsByShop(shopId);
     } catch (e) {
       emit(ProductError("Update failed: ${e.toString()}"));
       rethrow;

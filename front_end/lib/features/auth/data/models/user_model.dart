@@ -31,6 +31,8 @@ class UserModel {
       shops: shopList,
     );
   }
+
+  void operator [](String other) {}
 }
 
 class ShopModel {

@@ -1,12 +1,13 @@
+import 'dart:io'; 
 import 'package:flutter/material.dart';
 import 'package:front_end/core/network/dio_client.dart';
 import 'package:front_end/core/service_locator.dart';
 import 'package:front_end/features/auth/data/models/product_model.dart';
 import 'package:front_end/features/auth/domain/repositories/auth_repository.dart';
+import 'package:image_picker/image_picker.dart'; 
 
 class ProductDetailsPage extends StatefulWidget {
   final int productId;
-  /// Optional: show this immediately while fetching fresh data from GET /products/{id}.
   final ProductModel? initialProduct;
 
   const ProductDetailsPage({
@@ -22,6 +23,7 @@ class ProductDetailsPage extends StatefulWidget {
 class _ProductDetailsPageState extends State<ProductDetailsPage> {
   ProductModel? _product;
   bool _loading = true;
+  bool _isActionLoading = false;
   String? _error;
 
   @override
@@ -32,6 +34,28 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
       _loading = false;
     }
     _fetchProduct();
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image != null) {
+      _setBusy(true);
+      try {
+        final repo = getIt<AuthRepository>();
+        await repo.uploadProductImage(widget.productId, File(image.path));
+        await _fetchProduct();
+
+        if (!mounted) return;
+        _showSnackBar("Image uploaded successfully", Colors.green);
+      } catch (e) {
+        if (!mounted) return;
+        _showSnackBar("Upload failed: $e", Colors.red);
+      } finally {
+        _setBusy(false);
+      }
+    }
   }
 
   Future<void> _fetchProduct() async {
@@ -57,11 +81,69 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     }
   }
 
+  void _setBusy(bool value) => setState(() => _isActionLoading = value);
+
+  Future<void> _deleteImage(int imageId) async {
+    _setBusy(true);
+    try {
+      final repo = getIt<AuthRepository>();
+      await repo.deleteProductImage(widget.productId, imageId);
+      await _fetchProduct();
+      
+      _showSnackBar("Image deleted", Colors.orange);
+    } catch (e) {
+      _showSnackBar("Delete failed: $e", Colors.red);
+    } finally {
+      _setBusy(false);
+    }
+  }
+
+  Future<void> _deleteReview(int reviewId) async {
+    _setBusy(true);
+    try {
+      final repo = getIt<AuthRepository>();
+      await repo.deleteReview(widget.productId, reviewId); 
+      await _fetchProduct();
+      _showSnackBar("Review deleted", Colors.orange);
+    } catch (e) {
+      _showSnackBar("Failed to delete review: $e", Colors.red);
+    } finally {
+      _setBusy(false);
+    }
+  }
+
   static String _fullImageUrl(String? url) {
     if (url == null || url.isEmpty) return '';
     if (url.startsWith('http')) return url;
     final base = kBaseUrl.endsWith('/') ? kBaseUrl : '$kBaseUrl/';
     return '$base${url.startsWith('/') ? url.substring(1) : url}';
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
+    );
+  }
+
+  void _showDeleteConfirmation(int reviewId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Review"),
+        content: const Text("Are you sure you want to delete this review?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteReview(reviewId);
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -72,10 +154,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF1A237E),
           foregroundColor: Colors.white,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
         body: Center(
           child: Padding(
@@ -110,10 +188,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         appBar: AppBar(
           backgroundColor: const Color(0xFF1A237E),
           foregroundColor: Colors.white,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.pop(context),
-          ),
         ),
         body: const Center(
           child: CircularProgressIndicator(color: Color(0xFF1A237E)),
@@ -121,7 +195,18 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
       );
     }
 
-    return _buildContent(context, _product!);
+    return Stack(
+      children: [
+        _buildContent(context, _product!),
+        if (_isActionLoading)
+          Container(
+            color: Colors.black26,
+            child: const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          ),
+      ],
+    );
   }
 
   Widget _buildContent(BuildContext context, ProductModel product) {
@@ -156,9 +241,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     ? PageView.builder(
                         itemCount: imageUrls.length,
                         itemBuilder: (context, index) {
-                          final url = imageUrls[index];
                           return Image.network(
-                            url,
+                            imageUrls[index],
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _imagePlaceholder(),
                           );
@@ -216,7 +300,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                         if (product.discountPrice != null) ...[
                           const SizedBox(height: 6),
                           Text(
-                            '${product.discountPrice!.toStringAsFixed(1)} JD (sale)',
+                            '${product.discountPrice!.toStringAsFixed(1)} JD',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade600,
@@ -227,26 +311,18 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Icon(Icons.category_outlined,
-                                size: 18, color: Colors.grey.shade600),
+                            Icon(Icons.category_outlined, size: 18, color: Colors.grey.shade600),
                             const SizedBox(width: 6),
                             Text(
                               product.category,
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                                fontSize: 14,
-                              ),
+                              style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
                             ),
                             const SizedBox(width: 16),
-                            Icon(Icons.shopping_bag_outlined,
-                                size: 18, color: Colors.grey.shade600),
+                            Icon(Icons.shopping_bag_outlined, size: 18, color: Colors.grey.shade600),
                             const SizedBox(width: 6),
                             Text(
                               'Sold ${product.salesCount}',
-                              style: TextStyle(
-                                color: Colors.grey.shade700,
-                                fontSize: 14,
-                              ),
+                              style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
                             ),
                           ],
                         ),
@@ -254,8 +330,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: product.stockQuantity > 0
                                     ? Colors.green.withOpacity(0.12)
@@ -319,6 +394,74 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
+                  const Text(
+                    "Product Gallery",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1A237E),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 100,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: imageUrls.length + 1, 
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          return GestureDetector(
+                            onTap: _pickImage,
+                            child: Container(
+                              width: 100,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(color: const Color(0xFF1A237E), width: 1.5),
+                              ),
+                              child: const Icon(Icons.add_a_photo_outlined, color: Color(0xFF1A237E)),
+                            ),
+                          );
+                        }
+                        return Stack(
+                          children: [
+                            Container(
+                              width: 100,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15),
+                                image: DecorationImage(
+                                  image: NetworkImage(imageUrls[index - 1]),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 5,
+                              right: 18,
+                              child: GestureDetector(
+                                onTap: () => _deleteImage(product.images[index - 1].id),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -349,10 +492,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                             ),
                             Text(
                               "${product.reviews.length} review(s)",
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 14,
-                              ),
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                             ),
                           ],
                         ),
@@ -362,10 +502,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             child: Text(
                               "No reviews yet.",
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 14,
-                              ),
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                             ),
                           )
                         else
@@ -382,11 +519,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                                   CircleAvatar(
                                     radius: 20,
                                     backgroundColor: const Color(0xFF1A237E).withOpacity(0.1),
-                                    child: const Icon(
-                                      Icons.person_rounded,
-                                      color: Color(0xFF1A237E),
-                                      size: 20,
-                                    ),
+                                    child: const Icon(Icons.person_rounded, color: Color(0xFF1A237E), size: 20),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -394,24 +527,30 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Row(
-                                          children: List.generate(
-                                            5,
-                                            (i) => Icon(
-                                              Icons.star_rounded,
-                                              size: 16,
-                                              color: i < review.rating
-                                                  ? Colors.amber
-                                                  : Colors.grey.shade300,
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Row(
+                                              children: List.generate(
+                                                5,
+                                                (i) => Icon(
+                                                  Icons.star_rounded,
+                                                  size: 16,
+                                                  color: i < review.rating ? Colors.amber : Colors.grey.shade300,
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                            IconButton(
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(),
+                                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                              onPressed: () => _showDeleteConfirmation(review.id),
+                                            ),
+                                          ],
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
                                           review.comment ?? "No comment",
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey.shade800,
-                                          ),
+                                          style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
                                         ),
                                       ],
                                     ),
@@ -429,51 +568,6 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
             ),
           ),
         ],
-      ),
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.of(context).padding.bottom),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 12,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: ElevatedButton(
-            onPressed: product.stockQuantity > 0
-                ? () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Added to cart"),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: Color(0xFF2E7D32),
-                      ),
-                    );
-                  }
-                : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A237E),
-              disabledBackgroundColor: Colors.grey.shade300,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-            ),
-            child: Text(
-              product.stockQuantity > 0 ? "Add to cart" : "Out of stock",
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

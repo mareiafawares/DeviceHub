@@ -2,13 +2,13 @@ import 'package:dio/dio.dart';
 import '../auth/token_storage.dart';
 import 'auth_interceptor.dart';
 
-const String kBaseUrl = 'http://192.168.100.61:8001/';
+const String kBaseUrl = 'http://192.168.1.27:8000/';
 
 const Duration _connectTimeout = Duration(seconds: 30);
 const Duration _receiveTimeout = Duration(seconds: 30);
 const Duration _sendTimeout = Duration(seconds: 30);
 
-/// Builds a Dio instance with base URL, timeouts, logging, and auth interceptor.
+
 Dio createDio(TokenStorage tokenStorage) {
   final dio = Dio(BaseOptions(
     baseUrl: kBaseUrl,

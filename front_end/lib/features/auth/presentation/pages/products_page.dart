@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:front_end/core/network/dio_client.dart';
+import 'package:front_end/features/auth/presentation/cubit/cart_cubit.dart';
 import '../cubit/product_cubit.dart';
 import '../cubit/product_state.dart';
 import '../../data/models/product_model.dart';
@@ -40,7 +41,7 @@ class _ProductsPageState extends State<ProductsPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<ProductCubit>().fetchProducts(widget.shopId);
+        context.read<ProductCubit>().fetchProductsByShop(widget.shopId);
       }
     });
   }
@@ -62,7 +63,7 @@ class _ProductsPageState extends State<ProductsPage> {
                 ),
               ),
             );
-            context.read<ProductCubit>().fetchProducts(widget.shopId);
+            context.read<ProductCubit>().fetchProductsByShop(widget.shopId);
           }
         },
         child: CustomScrollView(
@@ -373,92 +374,25 @@ class _ProductsPageState extends State<ProductsPage> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      GestureDetector(
+                      _cardActionIcon(
+                        icon: Icons.info_outline_rounded,
                         onTap: () => _openProductDetails(context, product),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.info_outline_rounded,
-                            size: 18,
-                            color: Color(0xFF1A237E),
-                          ),
-                        ),
                       ),
                       const SizedBox(width: 6),
-                      GestureDetector(
+                      _cardActionIcon(
+                        icon: Icons.edit_outlined,
                         onTap: () => _openEditProduct(context, product),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.edit_outlined,
-                            size: 18,
-                            color: Color(0xFF1A237E),
-                          ),
-                        ),
                       ),
                       const SizedBox(width: 6),
-                      GestureDetector(
+                      _cardActionIcon(
+                        icon: Icons.photo_library_outlined,
                         onTap: () => _openManageImages(context, product),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.photo_library_outlined,
-                            size: 18,
-                            color: Color(0xFF1A237E),
-                          ),
-                        ),
                       ),
                       const SizedBox(width: 6),
-                      GestureDetector(
+                      _cardActionIcon(
+                        icon: Icons.delete_outline_rounded,
+                        color: Colors.redAccent,
                         onTap: () => _confirmDelete(product),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.delete_outline_rounded,
-                            size: 18,
-                            color: Colors.redAccent,
-                          ),
-                        ),
                       ),
                     ],
                   ),
@@ -499,10 +433,7 @@ class _ProductsPageState extends State<ProductsPage> {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: product.stockQuantity > 0
                                 ? Colors.green.withOpacity(0.12)
@@ -530,6 +461,26 @@ class _ProductsPageState extends State<ProductsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _cardActionIcon({required IconData icon, required VoidCallback onTap, Color color = const Color(0xFF1A237E)}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 6,
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 18, color: color),
       ),
     );
   }

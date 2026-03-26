@@ -38,7 +38,7 @@ class _RegisterPageState extends State<RegisterPage> {
     if (role == 'seller') {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const SellerHomePage()), (_) => false);
     } else {
-      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const CustomerHomePage()), (_) => false);
+      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const CustomerHomePage(shopId: 1,)), (_) => false);
     }
   }
 
