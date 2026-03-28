@@ -3,7 +3,8 @@ import 'dart:convert';
 class OrderModel {
   final int id;
   final int userId;
-  final int shopId;
+ 
+  final int shopId; 
   final String fullName;
   final String phoneNumber;
   final String city;
@@ -64,17 +65,13 @@ class OrderModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'buyer_id': userId,
-      'shop_id': shopId,
+      
       'full_name': fullName,
       'phone_number': phoneNumber,
       'city': city,
       'address_details': addressDetails,
       'delivery_notes': deliveryNotes,
       'total_price': totalPrice,
-      'status': status,
-      'created_at': createdAt.toIso8601String(),
       'items': items.map((e) => e.toJson()).toList(),
     };
   }
@@ -86,6 +83,7 @@ class OrderItemModel {
   final double priceAtPurchase;
   final String productName;
   final String productImage;
+  final int shopId; 
 
   OrderItemModel({
     required this.productId,
@@ -93,6 +91,7 @@ class OrderItemModel {
     required this.priceAtPurchase,
     required this.productName,
     required this.productImage,
+    required this.shopId, 
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
@@ -102,6 +101,7 @@ class OrderItemModel {
       priceAtPurchase: (json['price_at_purchase'] ?? json['priceAtPurchase'] ?? 0).toDouble(),
       productName: json['product_name'] ?? json['productName'] ?? 'Product', 
       productImage: json['product_image'] ?? json['productImage'] ?? '',
+      shopId: json['shop_id'] ?? 0, 
     );
   }
 
@@ -112,6 +112,7 @@ class OrderItemModel {
       'price_at_purchase': priceAtPurchase,
       'product_name': productName,
       'product_image': productImage,
+      'shop_id': shopId, 
     };
   }
 }

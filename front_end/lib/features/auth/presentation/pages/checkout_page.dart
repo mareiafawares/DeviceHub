@@ -107,6 +107,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
+  
   void _onPlaceOrder(double total, List<CartItemModel> items) {
     if (_formKey.currentState!.validate()) {
       final authState = context.read<AuthCubit>().state;
@@ -124,13 +125,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
           priceAtPurchase: double.parse(item.product.price.toString()),
           productName: item.product.name, 
           productImage: _fullImageUrl(imgUrl),
+          
+          shopId: item.product.shopId ?? 0, 
         );
       }).toList();
 
       final orderRequest = OrderModel(
         id: 0, 
         userId: currentUserId, 
-        shopId: items.isNotEmpty ? (items.first.product.shopId ?? 1) : 1,
+      
+        shopId: 0, 
         fullName: _nameController.text,
         phoneNumber: _phoneController.text,
         city: _cityController.text,

@@ -8,7 +8,9 @@ import '../widgets/product_card.dart';
 import 'product_details_page.dart';
 
 class CustomerHomePage extends StatefulWidget {
-  const CustomerHomePage({super.key, required int shopId});
+ 
+  final int shopId;
+  const CustomerHomePage({super.key, required this.shopId});
 
   @override
   State<CustomerHomePage> createState() => _CustomerHomePageState();
@@ -18,7 +20,8 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   @override
   void initState() {
     super.initState();
-    context.read<ProductCubit>().fetchAllProducts();
+   
+    context.read<ProductCubit>().fetchProductsByShop(widget.shopId);
   }
 
   @override
@@ -78,7 +81,16 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
         }
         if (state is ProductLoaded) {
           if (state.products.isEmpty) {
-            return const Center(child: Text("No products available"));
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inventory_2_outlined, size: 50, color: Colors.grey),
+                  SizedBox(height: 10),
+                  Text("No products available in this shop"),
+                ],
+              ),
+            );
           }
           return GridView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

@@ -15,7 +15,7 @@ class BuyerHomePage extends StatefulWidget {
 class _BuyerHomePageState extends State<BuyerHomePage> {
   List<ShopModel> allShops = [];
   bool isLoading = true;
-  final String baseUrl = "http://192.168.1.27:8000";
+  final String baseUrl = "http://192.168.1.11:8000";
 
   Future<void> fetchShops() async {
     try {

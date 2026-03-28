@@ -4,7 +4,27 @@ import 'package:http_parser/http_parser.dart';
 import 'auth/token_storage.dart';
 
 class ApiService {
-  ApiService(this._dio, this._storage);
+  
+  ApiService(this._dio, this._storage) {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+         
+          final token = await _storage.getToken(); 
+          
+          if (token != null && token.isNotEmpty) {
+           
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          return handler.next(options);
+        },
+        onError: (DioException e, handler) {
+         
+          return handler.next(e);
+        },
+      ),
+    );
+  }
 
   final Dio _dio;
   final TokenStorage _storage;
@@ -35,6 +55,7 @@ class ApiService {
         options: Options(contentType: Headers.jsonContentType),
       );
 
+  
   Future<Response> getMe({String? token}) {
     final options = (token != null && token.isNotEmpty)
         ? Options(headers: <String, dynamic>{'Authorization': 'Bearer $token'})
@@ -82,6 +103,7 @@ class ApiService {
     required String name,
     required double price,
     required String description,
+    required int shop_category, 
     required int stockQuantity,
     required List<String> imageUrls,
   }) {
@@ -123,6 +145,7 @@ class ApiService {
     );
   }
 
+  
   Future<Response> post(
     String path, {
     dynamic data,

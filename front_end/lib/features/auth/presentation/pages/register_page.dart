@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:front_end/features/auth/presentation/pages/main_layout.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:front_end/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:front_end/features/auth/presentation/cubit/auth_state.dart';
 import 'package:front_end/features/auth/presentation/pages/seller_home.dart';
-import 'package:front_end/features/auth/presentation/pages/customer_home.dart';
+
 import 'package:front_end/features/auth/presentation/pages/login_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -38,7 +39,7 @@ class _RegisterPageState extends State<RegisterPage> {
     if (role == 'seller') {
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const SellerHomePage()), (_) => false);
     } else {
-      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const CustomerHomePage(shopId: 1,)), (_) => false);
+      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const MainLayout()), (_) => false);
     }
   }
 

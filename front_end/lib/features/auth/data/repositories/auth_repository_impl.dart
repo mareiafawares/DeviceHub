@@ -156,13 +156,15 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> addProduct(int shopId, Map<String, dynamic> productData) async {
     try {
+      
       await _api.addProduct(
         shopId: shopId,
         name: productData['name'],
         price: (productData['price'] as num).toDouble(),
         description: productData['description'] ?? '',
         stockQuantity: productData['stock_quantity'] ?? 0,
-        imageUrls: productData['image_urls'] ?? [],
+        imageUrls: List<String>.from(productData['image_urls'] ?? []),
+        shop_category: productData['shop_category'] ?? 1, 
       );
     } on DioException catch (e) {
       throw Exception(e.response?.data is Map ? (e.response!.data as Map)['detail'] : 'Failed to add product');

@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import '../auth/token_storage.dart';
 import 'auth_interceptor.dart';
 
-const String kBaseUrl = 'http://192.168.1.27:8000/';
+const String kBaseUrl = 'http://192.168.1.11:8000/';
 
 const Duration _connectTimeout = Duration(seconds: 30);
 const Duration _receiveTimeout = Duration(seconds: 30);
